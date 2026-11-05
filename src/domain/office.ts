@@ -30,17 +30,22 @@ export function keepPlanned(before: OrderLine[], after: OrderLine[]): OrderLine[
   });
 }
 
-/** The price in force on a day: the latest one from that day or before. */
-export function priceOn(product: Product | undefined, day: LocalDate): Price | undefined {
-  return (product?.prices ?? []).filter((p) => p.from <= day).sort((a, b) => (a.from < b.from ? 1 : -1))[0];
+/**
+ * The price in force for a customer on a day: the customer's own latest price from that day or
+ * before; if it has none, the standard price (no customer) in force then.
+ */
+export function priceOn(product: Product | undefined, day: LocalDate, customerId?: string): Price | undefined {
+  const latest = (list: Price[]) => list.filter((p) => p.from <= day).sort((a, b) => (a.from < b.from ? 1 : -1))[0];
+  const prices = product?.prices ?? [];
+  return (customerId ? latest(prices.filter((p) => p.customerId === customerId)) : undefined) ?? latest(prices.filter((p) => !p.customerId));
 }
 
 /**
  * What a line costs. A pallet is priced per pallet, or per box × boxes per pallet; a box per box,
  * or per pallet ÷ boxes per pallet. Undefined if there is no price to go by.
  */
-export function lineAmount(line: Pick<OrderLine, 'pallets' | 'boxes'>, product: Product | undefined, day: LocalDate): number | undefined {
-  const price = priceOn(product, day);
+export function lineAmount(line: Pick<OrderLine, 'pallets' | 'boxes'>, product: Product | undefined, day: LocalDate, customerId?: string): number | undefined {
+  const price = priceOn(product, day, customerId);
   if (!price) return line.pallets || line.boxes ? undefined : 0;
   const per = product?.boxesPerPallet;
   const pallet = price.perPallet ?? (price.perBox !== undefined && per ? price.perBox * per : undefined);
@@ -113,7 +118,7 @@ export function accountingSummary(orders: Order[], products: Product[], customer
       }
       row.pallets += l.pallets;
       row.boxes += l.boxes;
-      const amount = lineAmount(l, product, o.day);
+      const amount = lineAmount(l, product, o.day, o.customerId);
       if (amount === undefined) {
         row.amount = undefined;
         c.missingPrice = true;

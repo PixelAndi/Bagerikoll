@@ -1699,7 +1699,8 @@ input[type='checkbox'] {
 .office-table { min-width: 560px; }
 .proto-table .num { text-align: right; white-space: nowrap; }
 .office-subtotal td { background: var(--surface-2); }
-.price-row { display: grid; grid-template-columns: 1.3fr 1fr 1fr auto; gap: 8px; align-items: end; margin: 6px 0; }
+.price-row { display: grid; grid-template-columns: 1.6fr 1.3fr 1fr 1fr auto; gap: 8px; align-items: end; margin: 6px 0; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+@media (max-width: 560px) { .price-row { grid-template-columns: 1fr 1fr; } .price-customer { grid-column: 1 / -1; } }
 .price-row label { display: flex; flex-direction: column; gap: 2px; }
 .price-row input { min-width: 0; }
 

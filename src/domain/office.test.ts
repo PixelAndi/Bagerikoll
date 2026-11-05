@@ -58,6 +58,36 @@ describe('prices', () => {
   });
 });
 
+describe('prices per customer', () => {
+  const p: Product = {
+    id: 'p',
+    name: 'Testbröd',
+    prices: [
+      { from: '2030-01-01', perPallet: 1000 },
+      { from: '2030-01-01', perPallet: 900, customerId: 'k1' },
+      { from: '2030-03-01', perPallet: 950, customerId: 'k1' },
+      { from: '2030-02-01', perPallet: 1100 },
+    ],
+  };
+  it("uses the customer's own price, in force on the day", () => {
+    expect(priceOn(p, '2030-02-15', 'k1')?.perPallet).toBe(900);
+    expect(priceOn(p, '2030-03-15', 'k1')?.perPallet).toBe(950);
+  });
+  it('falls back to the standard price for customers without their own', () => {
+    expect(priceOn(p, '2030-02-15', 'k2')?.perPallet).toBe(1100);
+    expect(priceOn(p, '2030-01-15')?.perPallet).toBe(1000);
+  });
+  it('a customer price from later on does not apply before its date', () => {
+    const q: Product = { id: 'q', name: 'Ny', prices: [{ from: '2030-05-01', perPallet: 5, customerId: 'k1' }, { from: '2030-01-01', perPallet: 7 }] };
+    expect(priceOn(q, '2030-02-01', 'k1')?.perPallet).toBe(7);
+  });
+  it('prices the summary per customer', () => {
+    const orders = [order('2030-02-10', 'k1', [{ productId: 'p', pallets: 1, boxes: 0 }]), order('2030-02-10', 'k2', [{ productId: 'p', pallets: 1, boxes: 0 }])];
+    const s = accountingSummary(orders, [p], customers, brands, '2030-02-10', '2030-02-10');
+    expect(s.map((b) => b.amount)).toEqual([900, 1100]);
+  });
+});
+
 describe('the weekly summary for accounting', () => {
   const orders = [
     order('2030-01-07', 'k1', [{ productId: 'p1', pallets: 1, boxes: 0 }]),

@@ -39,7 +39,7 @@ the owner says: raw materials, ingredients, shipping/QR loading, automatic order
 phone: the paper order book in parallel – orders on their pickup day (= production day), order
 number optional, each line ticked "planned for production" (all ticked = "Helt planerad";
 editing an amount unticks that line), moving (button, or drag on a computer), print a week or
-a day, prices per product (per pallet/box, dated) and the weekly accounting summary split by
+a day, prices per product and customer (per pallet/box, dated; a standard price for customers without their own) and the weekly accounting summary split by
 the customer's billing company (`Customer.billedBy` → a brand), CSV. The owner's paper order
 book lists per day the customers' orders with pallets per product, the day's pallets at the
 top, and the week's pallets per billing company.

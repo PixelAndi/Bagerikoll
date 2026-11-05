@@ -235,7 +235,7 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
   const toggleCustomer = (id: string) => setP((x) => ({ ...x, customerIds: x.customerIds?.includes(id) ? x.customerIds.filter((c) => c !== id) : [...(x.customerIds ?? []), id] }));
   const saveIt = async () => {
     if (!p.name.trim()) return;
-    const prices = (p.prices ?? []).filter((x) => x.from && (x.perPallet !== undefined || x.perBox !== undefined)).sort((a, b) => (a.from < b.from ? -1 : 1));
+    const prices = (p.prices ?? []).filter((x) => x.from && (x.perPallet !== undefined || x.perBox !== undefined)).sort((a, b) => (a.customerId ?? '').localeCompare(b.customerId ?? '') || (a.from < b.from ? -1 : 1));
     await db.products.update(p.id, { name: p.name.trim(), code: p.code?.trim() || undefined, brandId: p.brandId || undefined, customerIds: p.customerIds ?? [], boxesPerPallet: p.boxesPerPallet, palletsPerDough: p.palletsPerDough, prices, hidden: p.hidden });
     onClose();
   };
@@ -286,6 +286,17 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
         <span className="field-hint">{t('admin.pricesHint')}</span>
         {(p.prices ?? []).map((x, i) => (
           <div key={i} className="price-row">
+            <label className="price-customer">
+              <span className="small muted">{t('pack.customer')}</span>
+              <select value={x.customerId ?? ''} onChange={(e) => setP({ ...p, prices: p.prices!.map((y, j) => (j === i ? { ...y, customerId: e.target.value || undefined } : y)) })}>
+                <option value="">{t('admin.priceStandard')}</option>
+                {[...customers.filter((c) => p.customerIds?.includes(c.id)), ...customers.filter((c) => !p.customerIds?.includes(c.id) && !c.hidden)].map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label>
               <span className="small muted">{t('admin.priceFrom')}</span>
               <input type="date" value={x.from} onChange={(e) => setP({ ...p, prices: p.prices!.map((y, j) => (j === i ? { ...y, from: e.target.value } : y)) })} />
@@ -303,7 +314,7 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
             </button>
           </div>
         ))}
-        <button type="button" className="button button-small" onClick={() => setP({ ...p, prices: [...(p.prices ?? []), { from: todayLocal() }] })}>
+        <button type="button" className="button button-small" onClick={() => setP({ ...p, prices: [...(p.prices ?? []), { from: todayLocal(), customerId: p.customerIds?.length === 1 ? p.customerIds[0] : undefined }] })}>
           + {t('admin.newPrice')}
         </button>
       </div>

@@ -73,7 +73,7 @@ function Office() {
   // customers without a billing company, products this week without a price.
   const soon = live.filter((o) => (o.day === today || o.day === addDays(today, 1)) && !planState(o).full);
   const noBiller = [...new Set(live.map((o) => o.customerId))].map((id) => customers.find((c) => c.id === id)).filter((c) => c && (!c.billedBy || !brands.some((b) => b.id === c.billedBy)));
-  const noPrice = [...new Set(live.flatMap((o) => o.lines.filter((l) => !priceOn(products.find((p) => p.id === l.productId), o.day)).map((l) => l.productId)))].map((id) => products.find((p) => p.id === id)?.name ?? '?');
+  const noPrice = [...new Set(live.flatMap((o) => o.lines.filter((l) => !priceOn(products.find((p) => p.id === l.productId), o.day, o.customerId)).map((l) => l.productId)))].map((id) => products.find((p) => p.id === id)?.name ?? '?');
   const weekDupes = live.filter((o) => o.orderNumber && dupes.has(o.orderNumber)).map((o) => o.orderNumber!);
 
   return (
@@ -255,7 +255,7 @@ function OrderCard({ order, duplicate, onEdit, onMove }: { order: Order; duplica
   const toggle = (productId: string) =>
     db.orders.update(order.id, { lines: order.lines.map((l) => (l.productId === productId ? { ...l, plannedAt: l.plannedAt ? undefined : Date.now() } : l)) });
   const amount = order.lines.reduce<number | undefined>((s, l) => {
-    const a = lineAmount(l, products.find((p) => p.id === l.productId), order.day);
+    const a = lineAmount(l, products.find((p) => p.id === l.productId), order.day, order.customerId);
     return s === undefined || a === undefined ? undefined : s + a;
   }, 0);
   return (

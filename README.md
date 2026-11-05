@@ -82,7 +82,8 @@ device Admin marks as a manager's device (a manager's phone, the office computer
 - **Printing:** the week, or one day, as a list per day (order no., customer, billed by,
   product, pallets, boxes, planned ✓/☐); the print dialog opens by itself.
 - **Accounting:** each customer is billed by one of the billing companies (Admin → Kunder);
-  each product has prices per pallet and/or per box, each from a date (Admin → Produkter), so
+  each product has prices **per customer** – per pallet and/or per box, each from a date –
+  plus an optional standard price for customers without their own (Admin → Produkter), so
   older orders keep the price of their day. The week's summary: per billing company, per
   customer, per product – pallets, boxes and amount excl. VAT, with totals; missing prices are
   marked. Print it, or save it as CSV for Excel.

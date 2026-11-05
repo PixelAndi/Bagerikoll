@@ -86,9 +86,14 @@ export interface Entry {
 
 // Production (managers): orders, doughs, deviations and stock.
 
-/** A product's price from a day on, in kronor excluding VAT: per pallet and/or per box. */
+/**
+ * A product's price from a day on, in kronor excluding VAT: per pallet and/or per box. Prices
+ * differ per customer: a price with `customerId` is that customer's; one without is the
+ * standard price, used for customers who have none of their own.
+ */
 export interface Price {
   from: LocalDate;
+  customerId?: string;
   perPallet?: number;
   perBox?: number;
 }
