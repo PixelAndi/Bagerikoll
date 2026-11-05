@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 
 // Hash routes: "#/" (packa), "#/today", "#/admin", "#/more", "#/design".
 
-export type Route = { name: 'pack' } | { name: 'today' } | { name: 'admin' } | { name: 'more' } | { name: 'design' };
+export type Route = { name: 'pack' } | { name: 'today' } | { name: 'admin' } | { name: 'log' } | { name: 'more' } | { name: 'design' };
 
 export function parse(hash: string): Route {
   const [name] = hash.replace(/^#\/?/, '').split('/');
-  if (name === 'today' || name === 'admin' || name === 'more' || name === 'design') return { name };
+  if (name === 'today' || name === 'log' || name === 'admin' || name === 'more' || name === 'design') return { name };
   return { name: 'pack' };
 }
 

@@ -7,19 +7,25 @@ one brand – everything sorts and filters by brand. README.md describes it.
 
 **Phase 1 (built): the packing station only** – workers pick their names to
 start a session, register pallets and boxes per product (tied to the session's
-workers), undo within 2 minutes (voided, never deleted), Idag shows the totals
-at a glance, Admin (PIN, default from the owner's brief, stored only as a
-salted hash in `domain/pin.ts`; changeable per device) has the full log, voiding
-with a reason, per packer, names/brands/products, station name, CSV export and
-the workstation lock. Out of scope until the owner says: raw materials,
-ingredients, dough calculations.
+workers), undo within 2 minutes (voided, never deleted). Idag shows the totals
+at a glance and who packed what; Logg (open to all) has every entry with its
+packers, station and time, filters and CSV export. Out of scope until the owner
+says: raw materials, ingredients, dough calculations.
+
+**Admin-only = only what the owner explicitly makes admin-only.** Don't hide
+anything else behind the PIN. Now admin-only: managing names, brands and
+products; this device's station name and the workstation lock (and unlocking
+it); changing the PIN; voiding/restoring log rows (workers undo their own for 2
+minutes). The PIN (default from the owner's brief) is stored only as a salted
+hash in `domain/pin.ts`, changeable per device; HANDOVER.md has the full brief.
 
 - **Don't write the company's or the brands' real names into the code** (public
   repo) – they are data entered in Admin. Tests use made-up names.
 - Data lives per device (Dexie, `src/db.ts`); there is no shared log between
   devices yet – raise it with the owner before building sync.
 - Map: `src/domain/` (types, production totals/CSV, PIN; tests), `src/ui/PackView.tsx`
-  (station), `TodayView.tsx` (Idag), `AdminView.tsx`, `PinPad.tsx`, `App.tsx`
+  (station), `TodayView.tsx` (Idag), `ProductionLog.tsx` (Logg + per packer),
+  `AdminView.tsx`, `PinPad.tsx`, `App.tsx`
   (admin state, idle close, locked mode), `settings.ts` (per device, localStorage).
 
 - Keep the look in step with Lönekoll: `src/styles.css` and `src/ui/common.tsx`

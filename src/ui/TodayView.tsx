@@ -4,10 +4,11 @@ import { useCatalog, useEntriesBetween } from '../data.ts';
 import { addDays, isoWeekday, todayLocal } from '../days.ts';
 import { byBrand, byDay, byProduct, sortProducts, total } from '../domain/production.ts';
 import { Page } from './common.tsx';
+import { ByWorker } from './ProductionLog.tsx';
 
 // Idag: what has been packed, readable at a glance – the day's pallets and boxes big, each brand
 // as a chip, the week as squares (darker = more pallets), and each brand's products below.
-// Who packed what is only in Admin.
+// Who packed what is shown below, and every entry in Logg.
 
 export function TodayView() {
   const { t, settings } = useApp();
@@ -89,6 +90,7 @@ export function TodayView() {
       </section>
 
       {entries.length === 0 && <p className="muted">{t('today.nothing')}</p>}
+      {entries.length > 0 && <ByWorker day={day} />}
       {brands.map((b) => {
         const list = sortProducts(products, brands, b.id).filter((p) => perProduct.has(p.id));
         const hiddenDone = products.filter((p) => p.hidden && p.brandId === b.id && perProduct.has(p.id));

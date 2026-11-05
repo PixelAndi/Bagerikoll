@@ -14,11 +14,12 @@ important numbers big, how things stand in coloured squares and chips, details f
 - **Undo, never delete.** A worker can undo an entry for two minutes; later only an admin can
   void it, with a reason. Voided entries stay in the log and are left out of every total.
 - **Idag.** Today's pallets and boxes, each brand as a chip, the week as squares (darker =
-  more pallets), and each brand's products. Who packed what is not shown here.
-- **Admin (PIN).** The full production log with packers and station, voiding and restoring,
-  per packer today, names, brands (with colours), products (with article numbers), this
-  device's station name, CSV export (opens in Excel), and changing the PIN. Admin closes by
-  itself after 10 minutes without a tap.
+  more pallets), who packed what, and each brand's products.
+- **Logg.** Every entry with its packers, station and time, by date range and brand, with
+  CSV export (opens in Excel). Open to everyone.
+- **Admin (PIN).** Only what the owner has made admin-only: names, brands (with colours),
+  products (with article numbers), this device's station name and lock, the PIN, and voiding
+  or restoring rows in the log. Admin closes by itself after 10 minutes without a tap.
 - **Workstation lock.** Admin can lock a device to the packing station: no tabs, no log, no
   settings – unlocking takes the PIN. Unlocked, the device has the full app (Packa, Idag, Admin, Mer).
 
