@@ -6,6 +6,11 @@ export interface AppData {
   t: Translate;
   settings: Settings;
   save: (patch: Partial<Settings>) => void;
+  /** Admin mode is open (the PIN was given; it closes by itself after a while). */
+  admin: boolean;
+  /** Ask for the PIN; `then` runs once it is right. */
+  askPin: (then?: () => void) => void;
+  closeAdmin: () => void;
 }
 
 export const AppContext = createContext<AppData | null>(null);

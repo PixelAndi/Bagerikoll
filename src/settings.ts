@@ -2,21 +2,32 @@ import { useEffect, useState } from 'react';
 import type { Language } from './i18n.ts';
 import { applyTheme, type Theme } from './theme.ts';
 
-// The app's own settings, kept in the browser on this phone only.
+// This device's own settings, kept in the browser on this device only.
 
 export interface Settings {
   language: Language;
   theme: Theme;
+  /** This device's name in the log, e.g. "Packning 1". */
+  station: string;
+  /** Locked to the packing station: only the packing view, leaving it takes the admin PIN. */
+  locked: boolean;
+  /** The admin PIN's hash when it has been changed on this device (see domain/pin.ts). */
+  pinHash?: string;
+  /** The changed PIN's number of digits (the PIN pad checks once that many are typed). */
+  pinLength?: number;
+  /** The session running at this station. */
+  sessionId?: string;
 }
 
 const KEY = 'bagerikoll-settings';
 
 function load(): Settings {
   const phone = (navigator.language ?? '').toLowerCase().startsWith('sv') ? 'sv' : 'en';
+  const base: Settings = { language: phone, theme: 'auto', station: 'Packning 1', locked: false };
   try {
-    return { language: phone, theme: 'auto', ...JSON.parse(localStorage.getItem(KEY) ?? '{}') };
+    return { ...base, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') };
   } catch {
-    return { language: phone, theme: 'auto' };
+    return base;
   }
 }
 

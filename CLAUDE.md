@@ -1,9 +1,26 @@
 # Bagerikoll – notes for Claude
 
-A local-first PWA with the same look as Lönekoll (github.com/PixelAndi/lonekoll,
-the owner's other app). Started as a shell: the look, a tab bar (Idag, Kalender,
-Mer), Swedish/English, offline, GitHub Pages deploy. **What the app is for has
-not been decided yet – ask the owner before building features.**
+A local-first ERP/logistics PWA for a bakery, with the same look as Lönekoll
+(github.com/PixelAndi/lonekoll, the owner's other app). One single app; a device
+can be locked to a simplified workstation view. Products come under more than
+one brand – everything sorts and filters by brand. README.md describes it.
+
+**Phase 1 (built): the packing station only** – workers pick their names to
+start a session, register pallets and boxes per product (tied to the session's
+workers), undo within 2 minutes (voided, never deleted), Idag shows the totals
+at a glance, Admin (PIN, default from the owner's brief, stored only as a
+salted hash in `domain/pin.ts`; changeable per device) has the full log, voiding
+with a reason, per packer, names/brands/products, station name, CSV export and
+the workstation lock. Out of scope until the owner says: raw materials,
+ingredients, dough calculations.
+
+- **Don't write the company's or the brands' real names into the code** (public
+  repo) – they are data entered in Admin. Tests use made-up names.
+- Data lives per device (Dexie, `src/db.ts`); there is no shared log between
+  devices yet – raise it with the owner before building sync.
+- Map: `src/domain/` (types, production totals/CSV, PIN; tests), `src/ui/PackView.tsx`
+  (station), `TodayView.tsx` (Idag), `AdminView.tsx`, `PinPad.tsx`, `App.tsx`
+  (admin state, idle close, locked mode), `settings.ts` (per device, localStorage).
 
 - Keep the look in step with Lönekoll: `src/styles.css` and `src/ui/common.tsx`
   were copied from there (its styles.css: base 1–566, modal/spinner, Fold,
@@ -12,8 +29,8 @@ not been decided yet – ask the owner before building features.**
   things stand, one highlighted "now" card (`cal-focus`), chips (`cal-chips`),
   big numbers (`cal-numbers`), a yellow "to check" card (`cal-check`), what's
   coming, details in folds. `#/design` shows every piece.
-- The owner tests on an Android phone (Chrome, added to the home screen),
-  replies in English; the UI is Swedish first. Every text in `src/i18n.ts` in
+- The owner tests on an Android phone (Chrome, added to the home screen); the
+  floor will use a tablet. Replies in English; the UI is Swedish first. Every text in `src/i18n.ts` in
   every language (same keys, tested).
 - The repository is public: never commit personal data.
 - Commit to `main` and push when the owner asks; no pull requests unless asked;

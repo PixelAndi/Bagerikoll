@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 
-// Hash routes, as in Lönekoll: "#/", "#/calendar", "#/more", "#/design".
+// Hash routes: "#/" (packa), "#/today", "#/admin", "#/more", "#/design".
 
-export type Route = { name: 'today' } | { name: 'calendar' } | { name: 'more' } | { name: 'design' };
+export type Route = { name: 'pack' } | { name: 'today' } | { name: 'admin' } | { name: 'more' } | { name: 'design' };
 
 export function parse(hash: string): Route {
   const [name] = hash.replace(/^#\/?/, '').split('/');
-  if (name === 'calendar' || name === 'more' || name === 'design') return { name };
-  return { name: 'today' };
+  if (name === 'today' || name === 'admin' || name === 'more' || name === 'design') return { name };
+  return { name: 'pack' };
 }
 
-export const href = (r: Route) => (r.name === 'today' ? '#/' : `#/${r.name}`);
+export const href = (r: Route) => (r.name === 'pack' ? '#/' : `#/${r.name}`);
 
 export function useRoute(): Route {
   const [route, setRoute] = useState(() => parse(location.hash));

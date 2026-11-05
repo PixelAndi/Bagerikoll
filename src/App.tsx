@@ -1,19 +1,25 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppContext, useApp } from './app-context.ts';
+import { ADMIN_IDLE_MS } from './domain/pin.ts';
 import { translator, type TextKey } from './i18n.ts';
 import { href, useRoute, type Route } from './router.ts';
 import { useSettings } from './settings.ts';
+import { AdminView } from './ui/AdminView.tsx';
 import { Icon } from './ui/common.tsx';
-import { CalendarView } from './ui/CalendarView.tsx';
 import { DesignView } from './ui/DesignView.tsx';
 import { MoreView } from './ui/MoreView.tsx';
+import { PackView } from './ui/PackView.tsx';
+import { PinPad } from './ui/PinPad.tsx';
 import { TodayView } from './ui/TodayView.tsx';
 
 // While the app is tested, a "Beta" badge shows in the header (as in Lönekoll).
 const BETA = true;
 
-const TABS: { route: Route; icon: 'today' | 'days' | 'more'; label: TextKey; match: Route['name'][] }[] = [
+type TabIcon = 'pack' | 'today' | 'lock' | 'more';
+const TABS: { route: Route; icon: TabIcon; label: TextKey; match: Route['name'][] }[] = [
+  { route: { name: 'pack' }, icon: 'pack', label: 'nav.pack', match: ['pack'] },
   { route: { name: 'today' }, icon: 'today', label: 'nav.today', match: ['today'] },
-  { route: { name: 'calendar' }, icon: 'days', label: 'nav.calendar', match: ['calendar'] },
+  { route: { name: 'admin' }, icon: 'lock', label: 'nav.admin', match: ['admin'] },
   { route: { name: 'more' }, icon: 'more', label: 'nav.more', match: ['more', 'design'] },
 ];
 
@@ -21,18 +27,69 @@ export function App() {
   const [settings, save] = useSettings();
   const t = translator(settings.language);
   const route = useRoute();
+  const [admin, setAdmin] = useState(false);
+  const [pin, setPin] = useState<{ then?: () => void } | null>(null);
+  const idle = useRef<number | undefined>(undefined);
+
+  // Admin mode closes by itself after a while without a tap.
+  const touch = useCallback(() => {
+    window.clearTimeout(idle.current);
+    if (admin) idle.current = window.setTimeout(() => setAdmin(false), ADMIN_IDLE_MS);
+  }, [admin]);
+  useEffect(() => {
+    touch();
+    window.addEventListener('pointerdown', touch);
+    return () => window.removeEventListener('pointerdown', touch);
+  }, [touch]);
+
+  const value = {
+    t,
+    settings,
+    save,
+    admin,
+    askPin: (then?: () => void) => (admin ? then?.() : setPin({ then })),
+    closeAdmin: () => setAdmin(false),
+  };
+  const locked = settings.locked && !admin;
+
   return (
-    <AppContext.Provider value={{ t, settings, save }}>
-      <div className="app">
+    <AppContext.Provider value={value}>
+      <div className={`app ${settings.locked ? 'app-station' : ''}`}>
         <header className="app-header">
-          <a href={href({ name: 'today' })} className="app-title">
+          <span className="app-title">
             {t('app.title')}
             {BETA && <span className="beta-badge">{t('beta.badge')}</span>}
-          </a>
-          <span className="app-tagline">{t('app.tagline')}</span>
+          </span>
+          <span className="app-tagline">{settings.station}</span>
+          {settings.locked && (
+            <button
+              type="button"
+              className="button button-small"
+              onClick={() =>
+                value.askPin(() => {
+                  save({ locked: false });
+                  location.hash = '#/admin';
+                })
+              }
+            >
+              🔒 {t('station.unlock')}
+            </button>
+          )}
+          {admin && !settings.locked && <span className="admin-badge">{t('admin.badge')}</span>}
         </header>
-        <Screen route={route} />
-        <TabBar route={route} />
+        {locked ? <PackView /> : <Screen route={route} />}
+        {!settings.locked && <TabBar route={route} />}
+        {pin && (
+          <PinPad
+            onClose={() => setPin(null)}
+            onOk={() => {
+              setAdmin(true);
+              const then = pin.then;
+              setPin(null);
+              then?.();
+            }}
+          />
+        )}
       </div>
     </AppContext.Provider>
   );
@@ -40,14 +97,16 @@ export function App() {
 
 function Screen({ route }: { route: Route }) {
   switch (route.name) {
-    case 'calendar':
-      return <CalendarView />;
+    case 'today':
+      return <TodayView />;
+    case 'admin':
+      return <AdminView />;
     case 'more':
       return <MoreView />;
     case 'design':
       return <DesignView />;
     default:
-      return <TodayView />;
+      return <PackView />;
   }
 }
 
