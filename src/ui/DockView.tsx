@@ -4,11 +4,13 @@ import { useApp } from '../app-context.ts';
 import { useCatalog } from '../data.ts';
 import { todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
+import { deliveredDiffers, deliveredLines } from '../domain/accounting.ts';
 import { deliveries, type Delivery } from '../domain/dock.ts';
 import { orderTotals } from '../domain/office.ts';
 import { lineBoxesPerPallet } from '../domain/pallet.ts';
 import type { Deviation, Order, Session } from '../domain/types.ts';
 import { Field, Modal, Notice, Page } from './common.tsx';
+import { Stepper } from './OrderEditor.tsx';
 import { PalletBadge } from './PalletIcon.tsx';
 
 // Lastkaj, the loading dock (a tablet that can be locked to it): today's deliveries – with any
@@ -228,6 +230,18 @@ function DeliveryCard({ delivery, session, now }: { delivery: Delivery; session?
   const { customers, products, workers } = useCatalog();
   const { order, state, late, deviations } = delivery;
   const [confirming, setConfirming] = useState(false);
+  // The quantities loaded: the ordered ones unless the dock changes them.
+  const ordered = order.lines.filter((l) => l.pallets || l.boxes);
+  const [qty, setQty] = useState<{ productId: string; pallets: number; boxes: number }[]>([]);
+  const startConfirm = () => {
+    setQty(ordered.map((l) => ({ productId: l.productId, pallets: l.pallets, boxes: l.boxes })));
+    setConfirming(true);
+  };
+  const differs = qty.some((q) => {
+    const o = ordered.find((l) => l.productId === q.productId);
+    return !o || o.pallets !== q.pallets || o.boxes !== q.boxes;
+  });
+  const qtyTotal = qty.reduce((s, q) => s + q.pallets, 0);
   const [reporting, setReporting] = useState(false);
   const customer = customers.find((c) => c.id === order.customerId);
   const total = orderTotals([order]);
@@ -235,7 +249,7 @@ function DeliveryCard({ delivery, session, now }: { delivery: Delivery; session?
   const names = (ids: string[]) => ids.map((id) => workers.find((w) => w.id === id)?.name ?? '?').join(', ');
   const load = async () => {
     if (!session) return;
-    await db.orders.update(order.id, { shippedAt: Date.now(), loadedBy: { workerIds: session.workerIds, driverId: session.driverId } });
+    await db.orders.update(order.id, { shippedAt: Date.now(), loadedBy: { workerIds: session.workerIds, driverId: session.driverId }, delivered: qty });
     setConfirming(false);
     navigator.vibrate?.(60);
   };
@@ -289,9 +303,15 @@ function DeliveryCard({ delivery, session, now }: { delivery: Delivery; session?
                 {order.loadedBy.driverId && ` · 🚜 ${names([order.loadedBy.driverId])}`}
               </span>
             )}
+            {deliveredDiffers(order) && (
+              <span className="small warn-text">
+                <br />
+                {t('dock.deliveredOther', { pallets: orderTotals([{ ...order, lines: deliveredLines(order) }]).pallets })}
+              </span>
+            )}
           </span>
           {canUndo && (
-            <button type="button" className="link-button" onClick={() => void db.orders.update(order.id, { shippedAt: undefined, loadedBy: undefined })}>
+            <button type="button" className="link-button" onClick={() => void db.orders.update(order.id, { shippedAt: undefined, loadedBy: undefined, delivered: undefined })}>
               {t('pack.undo')}
             </button>
           )}
@@ -301,7 +321,7 @@ function DeliveryCard({ delivery, session, now }: { delivery: Delivery; session?
           <button type="button" className="button" disabled={!session} onClick={() => setReporting(true)}>
             ⚠ {t('run.deviation')}
           </button>
-          <button type="button" className="button button-primary" disabled={!session} onClick={() => setConfirming(true)}>
+          <button type="button" className="button button-primary" disabled={!session} onClick={startConfirm}>
             ✓ {t('dock.load')}
           </button>
         </div>
@@ -309,14 +329,41 @@ function DeliveryCard({ delivery, session, now }: { delivery: Delivery; session?
       {!session && state !== 'loaded' && <p className="small muted">{t('dock.checkInFirst')}</p>}
       {confirming && (
         <Modal title={t('pack.sure')} onClose={() => setConfirming(false)}>
-          <p className="pack-pad-show">{t('dock.askLoad', { customer: customer?.name ?? '?', pallets: total.pallets })}</p>
+          <p className="pack-pad-show">{t(differs ? 'dock.askLoadOther' : 'dock.askLoad', { customer: customer?.name ?? '?', pallets: differs ? qtyTotal : total.pallets })}</p>
+          <p className="small muted">{t('dock.qtyHint')}</p>
+          <ul className="product-rows dock-qty-rows">
+            {qty.map((q, i) => {
+              const o = ordered.find((l) => l.productId === q.productId)!;
+              const p = products.find((x) => x.id === q.productId);
+              const changed = o.pallets !== q.pallets || o.boxes !== q.boxes;
+              return (
+                <li key={q.productId} className={changed ? 'dock-qty-changed' : ''}>
+                  <span>
+                    <strong>{p?.name ?? '?'}</strong>
+                    <br />
+                    <span className="small muted">{t('dock.ordered', { what: [o.pallets ? t('prod.nPallets', { n: o.pallets }) : '', o.boxes ? t('prod.nBoxes', { n: o.boxes }) : ''].filter(Boolean).join(' + ') })}</span>
+                  </span>
+                  <span className="order-steppers">
+                    <span className="small muted">{t('pack.palletsWord')}</span>
+                    <Stepper value={q.pallets} label={`${p?.name} ${t('pack.palletsWord')}`} onChange={(n) => setQty(qty.map((x, j) => (j === i ? { ...x, pallets: n } : x)))} />
+                    {(o.boxes > 0 || q.boxes > 0) && (
+                      <>
+                        <span className="small muted">{t('pack.boxesWord')}</span>
+                        <Stepper value={q.boxes} label={`${p?.name} ${t('pack.boxesWord')}`} onChange={(n) => setQty(qty.map((x, j) => (j === i ? { ...x, boxes: n } : x)))} />
+                      </>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
           <p className="small muted">{t('dock.signedBy', { names: names(crew) })}</p>
           <div className="confirm-buttons">
             <button type="button" className="button confirm-no" onClick={() => setConfirming(false)}>
               {t('pack.no')}
             </button>
             <button type="button" className="button button-primary confirm-yes" onClick={() => void load()}>
-              {t('dock.yesLoaded')}
+              {t(differs ? 'dock.yesLoadedOther' : 'dock.yesLoaded')}
             </button>
           </div>
         </Modal>

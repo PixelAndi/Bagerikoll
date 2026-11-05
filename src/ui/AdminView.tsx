@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../app-context.ts';
 import { BRAND_COLORS, useCatalog } from '../data.ts';
-import { todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
 import { hashPin } from '../domain/pin.ts';
 import type { Product } from '../domain/types.ts';
@@ -15,7 +14,7 @@ import { PalletBadge } from './PalletIcon.tsx';
 // including who packed what and when, is open to everyone (the owner's decision).
 
 export function AdminView() {
-  const { t, admin, askPin, closeAdmin } = useApp();
+  const { t, admin, askPin, closeAdmin, settings } = useApp();
   if (!admin)
     return (
       <Page title={t('nav.admin')}>
@@ -35,11 +34,12 @@ export function AdminView() {
       }
     >
       <Notice kind="info">{t('admin.intro')}</Notice>
+      {settings.locked && <Station />}
       <Workers />
       <Customers />
       <Products />
       <Brands />
-      <Station />
+      {!settings.locked && <Station />}
       <ChangePin />
     </Page>
   );
@@ -289,43 +289,7 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
         </Field>
         {p.boxesPerPallet ? <PalletBadge boxes={p.boxesPerPallet} perLayer={p.boxesPerLayer} label={t('pallet.label', { boxes: p.boxesPerPallet, layers: palletLayers(p.boxesPerPallet, p.boxesPerLayer).layers })} unit={0.5} /> : null}
       </div>
-      <div className="field">
-        <span className="field-label">{t('admin.prices')}</span>
-        <span className="field-hint">{t('admin.pricesHint')}</span>
-        {(p.prices ?? []).map((x, i) => (
-          <div key={i} className="price-row">
-            <label className="price-customer">
-              <span className="small muted">{t('pack.customer')}</span>
-              <select value={x.customerId ?? ''} onChange={(e) => setP({ ...p, prices: p.prices!.map((y, j) => (j === i ? { ...y, customerId: e.target.value || undefined } : y)) })}>
-                <option value="">{t('admin.priceStandard')}</option>
-                {[...customers.filter((c) => p.customerIds?.includes(c.id)), ...customers.filter((c) => !p.customerIds?.includes(c.id) && !c.hidden)].map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="small muted">{t('admin.priceFrom')}</span>
-              <input type="date" value={x.from} onChange={(e) => setP({ ...p, prices: p.prices!.map((y, j) => (j === i ? { ...y, from: e.target.value } : y)) })} />
-            </label>
-            <label>
-              <span className="small muted">{t('admin.perPallet')}</span>
-              <input type="text" inputMode="decimal" defaultValue={x.perPallet ?? ''} onChange={(e) => setP({ ...p, prices: p.prices!.map((y, j) => (j === i ? { ...y, perPallet: num(e.target.value) } : y)) })} />
-            </label>
-            <label>
-              <span className="small muted">{t('admin.perBox')}</span>
-              <input type="text" inputMode="decimal" defaultValue={x.perBox ?? ''} onChange={(e) => setP({ ...p, prices: p.prices!.map((y, j) => (j === i ? { ...y, perBox: num(e.target.value) } : y)) })} />
-            </label>
-            <button type="button" className="link-button small" onClick={() => setP({ ...p, prices: p.prices!.filter((_, j) => j !== i) })}>
-              {t('prod.removeDeviation')}
-            </button>
-          </div>
-        ))}
-        <button type="button" className="button button-small" onClick={() => setP({ ...p, prices: [...(p.prices ?? []), { from: todayLocal(), customerId: p.customerIds?.length === 1 ? p.customerIds[0] : undefined }] })}>
-          + {t('admin.newPrice')}
-        </button>
-      </div>
+      <p className="small muted">💰 {t('admin.pricesInAccounting')}</p>
       <div className="button-row">
         <button type="button" className="button button-primary" disabled={!p.name.trim()} onClick={() => void saveIt()}>
           {t('admin.save')}
@@ -344,6 +308,24 @@ function Station() {
   const { t, settings, save, closeAdmin } = useApp();
   return (
     <Card title={t('admin.station')}>
+      {settings.locked && (
+        <div className="kiosk-leave">
+          <p>
+            <strong>{t('admin.inKiosk', { station: t(settings.lockedTo === 'dock' ? 'nav.dock' : settings.lockedTo === 'accounting' ? 'nav.accounting' : 'pack.title') })}</strong>
+          </p>
+          <button
+            type="button"
+            className="button button-primary pack-start"
+            onClick={() => {
+              save({ locked: false });
+              closeAdmin();
+              location.hash = '#/';
+            }}
+          >
+            🔓 {t('admin.leaveKiosk')}
+          </button>
+        </div>
+      )}
       <Field label={t('admin.stationName')} hint={t('admin.stationNameHint')}>
         <input type="text" defaultValue={settings.station} onBlur={(e) => e.target.value.trim() && save({ station: e.target.value.trim() })} />
       </Field>
@@ -357,7 +339,7 @@ function Station() {
       </label>
       <p className="small muted">{t('admin.lockHint')}</p>
       <div className="button-row">
-        {(['pack', 'dock'] as const).map((to) => (
+        {(['pack', 'dock', 'accounting'] as const).map((to) => (
           <button
             key={to}
             type="button"
@@ -365,10 +347,10 @@ function Station() {
             onClick={() => {
               save({ locked: true, lockedTo: to, productionOpen: false });
               closeAdmin();
-              location.hash = to === 'dock' ? '#/dock' : '#/';
+              location.hash = `#/${to}`;
             }}
           >
-            🔒 {t(to === 'dock' ? 'admin.lockDock' : 'admin.lock')}
+            🔒 {t(to === 'dock' ? 'admin.lockDock' : to === 'accounting' ? 'admin.lockAccounting' : 'admin.lock')}
           </button>
         ))}
       </div>

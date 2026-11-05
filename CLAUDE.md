@@ -44,10 +44,16 @@ the customer's billing company (`Customer.billedBy` → a brand), CSV. The owner
 book lists per day the customers' orders with pallets per product, the day's pallets at the
 top, and the week's pallets per billing company.
 
-**Navigation by device (owner's decision):** ordinary devices show Packa, Lastkaj, Idag, Logg, Mer
+**Navigation by device (owner's decision):** ordinary devices show Stationer, Idag, Logg, Mer
 (Admin is under Mer); a manager's device (`settings.productionOpen`) or open admin also shows
-Produktion and Kontor; a locked device (`settings.lockedTo`: 'pack' | 'dock') shows only its
-station. **Lastkaj** (`ui/DockView.tsx`, `domain/dock.ts` + tests): today's deliveries; loaders
+Produktion and Kontor. Stationer (`ui/StationsView.tsx`) puts the device in kiosk mode
+(`settings.locked` + `lockedTo`: 'pack' | 'dock' | 'accounting'; Ekonomi needs the PIN to start):
+only that page and the Admin tab, where "Lämna kioskläget" (PIN) unlocks. **Ekonomi**
+(`ui/AccountingView.tsx`, `domain/accounting.ts`, `domain/accountingSheet.ts`, `src/xlsx.ts` – a
+dependency-free .xlsx writer; tests): the week complete when every order is loaded; bills what the
+dock reported (`Order.delivered`); each line's calculation shown (`lineCalc`, `explain`);
+accounting sets prices (`ui/PriceEditor.tsx`; Admin no longer edits prices); Excel file with
+formulas (verify changes by recalculating with LibreOffice, `soffice --convert-to csv`). **Lastkaj** (`ui/DockView.tsx`, `domain/dock.ts` + tests): today's deliveries; loaders
 (several) and one forklift driver check in (`Session.kind 'dock'`, `driverId`); "Lastad" sets
 `shippedAt` + `loadedBy`; `loading` deviations go to the managers (`ui/LoadingDeviations.tsx` in
 Kontor and Produktion) until marked handled. **Boxes per pallet** can be set per order line while

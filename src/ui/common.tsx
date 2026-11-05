@@ -126,6 +126,10 @@ const icons = {
   cloud: 'M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A6 6 0 0 0 6 20h13a5 5 0 0 0 .35-9.96Z',
   // A forklift truck: the loading dock.
   truck: 'M3 5h7l3 6h2V4h2v12h3v2h-3.2a2.5 2.5 0 0 1-4.6 0H8.8a2.5 2.5 0 0 1-4.6 0H2V9a4 4 0 0 1 1-2.6V5Zm2 2v3h6.4L10 7H5Zm1.5 9.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm8.2 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2ZM19 4h1v9h-1V4Z',
+  // A coin with a krona sign: accounting.
+  coin: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16ZM8 7v10h2v-4l3.2 4h2.5l-3.8-4.7L15.5 7H13l-3 3.8V7H8Z',
+  // Four tiles: the stations.
+  stations: 'M3 3h8v8H3V3Zm2 2v4h4V5H5Zm8-2h8v8h-8V3Zm2 2v4h4V5h-4ZM3 13h8v8H3v-8Zm2 2v4h4v-4H5Zm8-2h8v8h-8v-8Zm2 2v4h4v-4h-4Z',
   // A sun: today.
   today: 'M11 1h2v3h-2V1Zm0 19h2v3h-2v-3ZM1 11h3v2H1v-2Zm19 0h3v2h-3v-2ZM4.2 5.6l1.4-1.4 2.1 2.1-1.4 1.4-2.1-2.1Zm12.1 12.1 1.4-1.4 2.1 2.1-1.4 1.4-2.1-2.1ZM4.2 18.4l2.1-2.1 1.4 1.4-2.1 2.1-1.4-1.4ZM16.3 6.3l2.1-2.1 1.4 1.4-2.1 2.1-1.4-1.4ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z',
   // Three lines: more.
@@ -139,7 +143,7 @@ const icons = {
 export function Icon({ name }: { name: keyof typeof icons }) {
   return (
     <svg className={`icon icon-${name}`} viewBox="0 0 24 24" aria-hidden="true">
-      <path d={icons[name]} fillRule={name === 'help' ? 'evenodd' : undefined} />
+      <path d={icons[name]} fillRule={name === 'help' || name === 'coin' ? 'evenodd' : undefined} />
     </svg>
   );
 }

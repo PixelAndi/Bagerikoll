@@ -11,8 +11,8 @@ export interface Settings {
   station: string;
   /** Locked to a workstation: only its view; leaving it takes the admin PIN. */
   locked: boolean;
-  /** Which workstation a locked device shows: the packing station (default) or the loading dock. */
-  lockedTo?: 'pack' | 'dock';
+  /** What a locked device shows: the packing station (default), the loading dock, or Ekonomi (accounting). */
+  lockedTo?: 'pack' | 'dock' | 'accounting';
   /** The loading dock session running on this device. */
   dockSessionId?: string;
   /** The admin PIN's hash when it has been changed on this device (see domain/pin.ts). */

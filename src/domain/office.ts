@@ -40,18 +40,51 @@ export function priceOn(product: Product | undefined, day: LocalDate, customerId
   return (customerId ? latest(prices.filter((p) => p.customerId === customerId)) : undefined) ?? latest(prices.filter((p) => !p.customerId));
 }
 
-/**
- * What a line costs. A pallet is priced per pallet, or per box × boxes per pallet; a box per box,
- * or per pallet ÷ boxes per pallet. Undefined if there is no price to go by.
- */
-export function lineAmount(line: Pick<OrderLine, 'pallets' | 'boxes'>, product: Product | undefined, day: LocalDate, customerId?: string): number | undefined {
+/** How a line's amount is worked out – shown to accounting and written to the spreadsheet. */
+export interface LineCalc {
+  pallets: number;
+  boxes: number;
+  /** Boxes per pallet on this line (the order's, else the product's). */
+  boxesPerPallet?: number;
+  /** The price used. */
+  price?: Price;
+  /** Price of one pallet: per pallet, or per box × boxes per pallet. */
+  palletPrice?: number;
+  palletFrom?: 'pallet' | 'box';
+  /** Price of one box: per box, or per pallet ÷ boxes per pallet. */
+  boxPrice?: number;
+  boxFrom?: 'box' | 'pallet';
+  /** Undefined when something needed is missing. */
+  amount?: number;
+  missing?: 'price' | 'boxesPerPallet';
+}
+
+export function lineCalc(line: Pick<OrderLine, 'pallets' | 'boxes' | 'boxesPerPallet'>, product: Product | undefined, day: LocalDate, customerId?: string): LineCalc {
+  const per = line.boxesPerPallet ?? product?.boxesPerPallet;
   const price = priceOn(product, day, customerId);
-  if (!price) return line.pallets || line.boxes ? undefined : 0;
-  const per = product?.boxesPerPallet;
-  const pallet = price.perPallet ?? (price.perBox !== undefined && per ? price.perBox * per : undefined);
-  const box = price.perBox ?? (price.perPallet !== undefined && per ? price.perPallet / per : undefined);
-  if ((line.pallets && pallet === undefined) || (line.boxes && box === undefined)) return undefined;
-  return Math.round(((line.pallets ? line.pallets * pallet! : 0) + (line.boxes ? line.boxes * box! : 0)) * 100) / 100;
+  const base: LineCalc = { pallets: line.pallets, boxes: line.boxes, boxesPerPallet: per, price };
+  if (!line.pallets && !line.boxes) return { ...base, amount: 0 };
+  if (!price) return { ...base, missing: 'price' };
+  const palletPrice = price.perPallet ?? (price.perBox !== undefined && per ? price.perBox * per : undefined);
+  const boxPrice = price.perBox ?? (price.perPallet !== undefined && per ? price.perPallet / per : undefined);
+  const calc: LineCalc = {
+    ...base,
+    palletPrice,
+    palletFrom: price.perPallet !== undefined ? 'pallet' : 'box',
+    boxPrice,
+    boxFrom: price.perBox !== undefined ? 'box' : 'pallet',
+  };
+  if ((line.pallets && palletPrice === undefined) || (line.boxes && boxPrice === undefined)) return { ...calc, missing: 'boxesPerPallet' };
+  return { ...calc, amount: Math.round(((line.pallets ? line.pallets * palletPrice! : 0) + (line.boxes ? line.boxes * boxPrice! : 0)) * 100) / 100 };
+}
+
+/**
+ * What a line costs. A pallet is priced per pallet, or per box × boxes per pallet (the order's
+ * count when one was set); a box per box, or per pallet ÷ boxes per pallet. Undefined if there is
+ * no price (or count) to go by.
+ */
+export function lineAmount(line: Pick<OrderLine, 'pallets' | 'boxes' | 'boxesPerPallet'>, product: Product | undefined, day: LocalDate, customerId?: string): number | undefined {
+  return lineCalc(line, product, day, customerId).amount;
 }
 
 export interface SummaryRow {

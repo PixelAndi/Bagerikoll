@@ -359,7 +359,7 @@ function MoveOrder({ order, onClose, dayName }: { order: Order; onClose: () => v
 }
 
 /** The accounting summary on screen: per billing company, per customer, per product. */
-function Summary({ summary }: { summary: BillerSummary[] }) {
+export function Summary({ summary }: { summary: BillerSummary[] }) {
   const { t } = useApp();
   if (!summary.length) return <p className="muted">{t('office.noOrdersWeek')}</p>;
   return (
@@ -380,7 +380,7 @@ function Summary({ summary }: { summary: BillerSummary[] }) {
   );
 }
 
-function SummaryTable({ biller }: { biller: BillerSummary }) {
+export function SummaryTable({ biller }: { biller: BillerSummary }) {
   const { t } = useApp();
   return (
     <div className="proto-scroll">
@@ -423,7 +423,7 @@ function SummaryTable({ biller }: { biller: BillerSummary }) {
 }
 
 /** A page to print: only the sheet, with a way back; the print dialog opens by itself. */
-function PrintSheet({ onBack, children }: { onBack: () => void; children: ReactNode }) {
+export function PrintSheet({ onBack, children }: { onBack: () => void; children: ReactNode }) {
   const { t } = useApp();
   useEffect(() => {
     const timer = setTimeout(() => window.print(), 400);

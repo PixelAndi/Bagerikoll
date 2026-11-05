@@ -132,6 +132,8 @@ export interface Order {
   shippedAt?: number;
   /** Who confirmed it loaded at the loading dock. */
   loadedBy?: { workerIds: string[]; driverId?: string };
+  /** The quantities the loading dock reported as delivered (when confirmed); accounting bills these. */
+  delivered?: { productId: string; pallets: number; boxes: number }[];
   /** Called off: kept, but counted nowhere. */
   cancelled?: boolean;
   updatedAt?: number;

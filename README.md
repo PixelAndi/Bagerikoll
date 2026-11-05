@@ -64,12 +64,31 @@ to confirm; keep the paper form alongside until they have.
 
 ## Navigation by device
 
-- **Ordinary devices** show Packa, Lastkaj, Idag, Logg and Mer. **Admin** is reached from Mer
-  (PIN).
+- **Ordinary devices** show Stationer, Idag, Logg and Mer. **Admin** is reached from Mer (PIN).
+- **Stationer** picks what the device is for: **Packetering** or **Lastkaj** opens it and puts the
+  device in **kiosk mode** – only that page and the **Admin** tab, where a manager leaves kiosk
+  mode with the PIN. **Ekonomi** works the same way (the PIN is needed to start it, as it shows
+  prices) – the accounting department's device shows only Ekonomi and Admin.
 - **A manager's device** (set in Admin: a manager's phone, the office computer) also shows
   Produktion and Kontor, open without the PIN. Other devices don't show them at all.
 - **A device locked to a workstation** – the packing station or the loading dock – shows only
   that, with no tabs; "Lås upp" takes the PIN.
+
+## Ekonomi (accounting)
+
+- **A week at a time, in calendar order.** At the top: whether the week is **complete** – every
+  order picked up in it loaded at the dock with its quantities reported – the delivered value
+  (excl. VAT), pallets delivered, deliveries done and the amount per billing company.
+- Each day shows its delivered orders with **each line's calculation written out** ("3 pall × 20
+  kart. × 95,00 kr = 5 700,00 kr"); deliveries not loaded yet are marked. **What the dock reported
+  is billed** (it can differ from the order), with the order's boxes per pallet.
+- **Prices are set here** by accounting: per customer (or a standard price), per pallet and/or
+  per box, each from a date.
+- **Excel file (.xlsx)**: sheet *Leveranser* in calendar order – day, order no., customer,
+  billing company, product, pallets, boxes per pallet, boxes, pallet price, box price, amount and
+  the calculation in words – with the prices worked out from each other and the amounts, day sums
+  and week total as formulas; sheet *Summering* per billing company and customer with SUMIFS on
+  the first sheet. Checked by recalculating it in LibreOffice. Also printable.
 
 ## Lastkaj (the loading dock)
 
@@ -81,7 +100,8 @@ to confirm; keep the paper form alongside until they have.
   Adding or removing someone, or changing the driver, asks "Är du säker?"; the last one checked
   in can't leave (finish the session instead).
 - **Lastad** (with "Är du säker?") marks a delivery loaded with the time, the loaders and the
-  driver; it can be taken back for two minutes. **Avvikelse** (wrong count, damaged, missing,
+  driver, and **the quantities loaded** – the ordered ones unless the dock changes them; accounting
+  bills those. It can be taken back for two minutes. **Avvikelse** (wrong count, damaged, missing,
   other + a note) is saved with the delivery, time and crew and **shown to the managers** in
   Kontor and Produktion until one marks it handled.
 
