@@ -34,4 +34,4 @@ npm run dev
 `.github/workflows/deploy.yml` tests, builds and publishes to GitHub Pages on
 every push to `main`. Turn it on once in the repository: Settings → Pages →
 Build and deployment → Source: **GitHub Actions**. The app is then at
-https://pixelandi.github.io/bagerikoll/.
+https://pixelandi.github.io/Bagerikoll/.
