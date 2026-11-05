@@ -62,6 +62,33 @@ server, everything lives on the tablet: print or save the protocol as PDF every 
 data file. Whether this satisfies the bakery's certification is for its quality lead or auditor
 to confirm; keep the paper form alongside until they have.
 
+## Kontor (the office; managers – computer, tablet or phone)
+
+The paper order book, entered in parallel while it is tested. Behind the PIN, or open on a
+device Admin marks as a manager's device (a manager's phone, the office computer).
+
+- **A week at a time**, the orders on the day they are **picked up** (which is also the day
+  they are produced and packed). A computer sees the week side by side (the weekend narrower),
+  a tablet two or three days across, a phone one day under the other. Each day shows its
+  pallets, the week its pallets, orders, how many are fully planned and its value, and the
+  pallets per billing company (as the paper order book sums them up each week).
+- **An order:** order number (optional – not every customer has one; a number used twice is
+  flagged), customer, pickup day, pallets (and if need be boxes) per product, a note.
+- **Planned for production:** each product on an order has a tick. All ticked → the order
+  turns green, "Helt planerad". Changing a product's amount unticks that product only, so
+  production sees the new amount.
+- **Moving:** "Flytta" (the day before/after, a week later, any date) – or drag an order to
+  another day on a computer.
+- **Printing:** the week, or one day, as a list per day (order no., customer, billed by,
+  product, pallets, boxes, planned ✓/☐); the print dialog opens by itself.
+- **Accounting:** each customer is billed by one of the billing companies (Admin → Kunder);
+  each product has prices per pallet and/or per box, each from a date (Admin → Produkter), so
+  older orders keep the price of their day. The week's summary: per billing company, per
+  customer, per product – pallets, boxes and amount excl. VAT, with totals; missing prices are
+  marked. Print it, or save it as CSV for Excel.
+- **To check:** orders for today and tomorrow not fully planned, duplicate order numbers,
+  customers without a billing company, products without a price.
+
 ## Produktion (managers, phone-first)
 
 Behind the PIN, or always open on a phone Admin marks as a manager's phone (never on a locked

@@ -34,9 +34,19 @@ yield, rounded up, with the chance it's enough. Deviation days are kept out of t
 Behind the PIN, or open on a phone marked as a manager's phone in Admin. Out of scope until
 the owner says: raw materials, ingredients, shipping/QR loading, automatic order import.
 
+**Kontor (built): the office** (`ui/OfficeView.tsx`, `ui/OrderEditor.tsx` shared with Produktion,
+`domain/office.ts` + tests), managers only (same gate as Produktion), for computer, tablet and
+phone: the paper order book in parallel – orders on their pickup day (= production day), order
+number optional, each line ticked "planned for production" (all ticked = "Helt planerad";
+editing an amount unticks that line), moving (button, or drag on a computer), print a week or
+a day, prices per product (per pallet/box, dated) and the weekly accounting summary split by
+the customer's billing company (`Customer.billedBy` → a brand), CSV. The owner's paper order
+book lists per day the customers' orders with pallets per product, the day's pallets at the
+top, and the week's pallets per billing company.
+
 **Admin-only = only what the owner explicitly makes admin-only.** Don't hide
 anything else behind the PIN. Now admin-only: managing names, customers, products and
-brands; Produktion (the managers' part; or a manager's phone set in Admin); this device's station name and the workstation lock (and unlocking
+brands; Produktion and Kontor (the managers' parts; or a manager's device set in Admin); this device's station name and the workstation lock (and unlocking
 it); changing the PIN; voiding/restoring log rows (workers undo their own for 2
 minutes). The PIN (default from the owner's brief) is stored only as a salted
 hash in `domain/pin.ts`, changeable per device; HANDOVER.md has the full brief.

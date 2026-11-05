@@ -1662,3 +1662,55 @@ input[type='checkbox'] {
   .app-station .pack-register .pack-pallet { min-height: 210px; }
   .app-station .pack-box-buttons .pack-big { min-height: 120px; }
 }
+
+/* Kontor: the week of orders. A computer sees the whole week side by side; a tablet two or three
+   days across; a phone one day under the other. */
+.app-wide { max-width: 1500px; }
+.office-numbers { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.office-numbers .pack-figure { font-size: 1.6rem !important; }
+.office-week { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 16px; }
+@media (min-width: 640px) { .office-week { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 980px) { .office-week { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1300px) { .office-week { grid-template-columns: repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, 0.6fr)); gap: 8px; } }
+@media (max-width: 560px) { .office-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.office-day { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 8px; min-height: 120px; display: flex; flex-direction: column; gap: 8px; }
+.office-today { border: 2px solid var(--primary); }
+.office-drop { outline: 3px dashed var(--primary); outline-offset: -3px; }
+.office-day-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding: 2px 4px; flex-wrap: wrap; }
+.office-day-pallets { font-size: 1.5rem; font-weight: 800; white-space: nowrap; }
+.office-day-buttons { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+.office-order { background: var(--surface); border: 2px solid var(--border); border-radius: 10px; padding: 8px 10px; cursor: grab; }
+.office-order.office-partly { border-color: var(--cal-missing-strong); }
+.office-order.office-full { border-color: var(--cal-worked-strong); background: var(--cal-worked); }
+.office-order.office-cancelled { opacity: 0.5; text-decoration: line-through; cursor: default; }
+.office-order-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; flex-wrap: wrap; }
+.office-order-head .cal-chip { font-size: 0.75rem; }
+.office-lines { list-style: none; margin: 6px 0; padding: 0; }
+.office-line { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 2px 0; cursor: pointer; }
+.office-line input { width: 22px; height: 22px; flex: none; }
+.office-line-text { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 8px; }
+.office-line-name { min-width: 0; overflow-wrap: anywhere; }
+.office-line-qty { white-space: nowrap; margin-left: auto; }
+.office-line.on .office-line-name { color: var(--muted); }
+.office-order-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 4px; }
+.office-order-foot .link-button { min-height: 36px; padding: 4px 6px; }
+.office-biller { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
+.office-biller-sum { font-size: 1.3rem; white-space: nowrap; }
+.office-table { min-width: 560px; }
+.proto-table .num { text-align: right; white-space: nowrap; }
+.office-subtotal td { background: var(--surface-2); }
+.price-row { display: grid; grid-template-columns: 1.3fr 1fr 1fr auto; gap: 8px; align-items: end; margin: 6px 0; }
+.price-row label { display: flex; flex-direction: column; gap: 2px; }
+.price-row input { min-width: 0; }
+
+/* A sheet to print (a week or a day of orders, the accounting summary). */
+.print-title { font-size: 1.4rem; margin: 12px 0; }
+.print-day { break-inside: avoid; margin-bottom: 16px; }
+.print-day h2 { font-size: 1.1rem; margin: 10px 0 6px; }
+.print-day h2::first-letter { text-transform: uppercase; }
+.print-order-start td { border-top: 2px solid var(--text); }
+@media print {
+  .print-sheet .proto-table { font-size: 9pt; }
+  .print-day { break-inside: auto; }
+  .print-day h2 { break-after: avoid; }
+}

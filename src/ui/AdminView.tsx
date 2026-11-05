@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../app-context.ts';
 import { BRAND_COLORS, useCatalog } from '../data.ts';
+import { todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
 import { hashPin } from '../domain/pin.ts';
 import type { Product } from '../domain/types.ts';
@@ -107,7 +108,7 @@ function Brands() {
 
 function Customers() {
   const { t } = useApp();
-  const { customers } = useCatalog();
+  const { customers, brands } = useCatalog();
   const [name, setName] = useState('');
   const add = async () => {
     const n = name.trim();
@@ -122,6 +123,14 @@ function Customers() {
         {customers.map((c) => (
           <li key={c.id} className={c.hidden ? 'pack-voided' : ''}>
             <input type="text" defaultValue={c.name} aria-label={t('admin.name')} onBlur={(e) => e.target.value.trim() && void db.customers.update(c.id, { name: e.target.value.trim() })} />
+            <select value={c.billedBy ?? ''} aria-label={t('office.billedBy')} onChange={(e) => void db.customers.update(c.id, { billedBy: e.target.value || undefined })}>
+              <option value="">{t('admin.billedByNone')}</option>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {t('admin.billedByOption', { name: b.name })}
+                </option>
+              ))}
+            </select>
             <button type="button" className="link-button small" onClick={() => void db.customers.update(c.id, { hidden: !c.hidden })}>
               {c.hidden ? t('admin.show') : t('admin.hide')}
             </button>
@@ -226,7 +235,8 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
   const toggleCustomer = (id: string) => setP((x) => ({ ...x, customerIds: x.customerIds?.includes(id) ? x.customerIds.filter((c) => c !== id) : [...(x.customerIds ?? []), id] }));
   const saveIt = async () => {
     if (!p.name.trim()) return;
-    await db.products.update(p.id, { name: p.name.trim(), code: p.code?.trim() || undefined, brandId: p.brandId || undefined, customerIds: p.customerIds ?? [], boxesPerPallet: p.boxesPerPallet, palletsPerDough: p.palletsPerDough, hidden: p.hidden });
+    const prices = (p.prices ?? []).filter((x) => x.from && (x.perPallet !== undefined || x.perBox !== undefined)).sort((a, b) => (a.from < b.from ? -1 : 1));
+    await db.products.update(p.id, { name: p.name.trim(), code: p.code?.trim() || undefined, brandId: p.brandId || undefined, customerIds: p.customerIds ?? [], boxesPerPallet: p.boxesPerPallet, palletsPerDough: p.palletsPerDough, prices, hidden: p.hidden });
     onClose();
   };
   return (
@@ -270,6 +280,32 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
         <Field label={t('admin.boxesPerPallet')} hint={t('admin.boxesPerPalletHint')}>
           <input type="text" inputMode="numeric" defaultValue={p.boxesPerPallet ?? ''} onChange={(e) => setP({ ...p, boxesPerPallet: num(e.target.value) })} />
         </Field>
+      </div>
+      <div className="field">
+        <span className="field-label">{t('admin.prices')}</span>
+        <span className="field-hint">{t('admin.pricesHint')}</span>
+        {(p.prices ?? []).map((x, i) => (
+          <div key={i} className="price-row">
+            <label>
+              <span className="small muted">{t('admin.priceFrom')}</span>
+              <input type="date" value={x.from} onChange={(e) => setP({ ...p, prices: p.prices!.map((y, j) => (j === i ? { ...y, from: e.target.value } : y)) })} />
+            </label>
+            <label>
+              <span className="small muted">{t('admin.perPallet')}</span>
+              <input type="text" inputMode="decimal" defaultValue={x.perPallet ?? ''} onChange={(e) => setP({ ...p, prices: p.prices!.map((y, j) => (j === i ? { ...y, perPallet: num(e.target.value) } : y)) })} />
+            </label>
+            <label>
+              <span className="small muted">{t('admin.perBox')}</span>
+              <input type="text" inputMode="decimal" defaultValue={x.perBox ?? ''} onChange={(e) => setP({ ...p, prices: p.prices!.map((y, j) => (j === i ? { ...y, perBox: num(e.target.value) } : y)) })} />
+            </label>
+            <button type="button" className="link-button small" onClick={() => setP({ ...p, prices: p.prices!.filter((_, j) => j !== i) })}>
+              {t('prod.removeDeviation')}
+            </button>
+          </div>
+        ))}
+        <button type="button" className="button button-small" onClick={() => setP({ ...p, prices: [...(p.prices ?? []), { from: todayLocal() }] })}>
+          + {t('admin.newPrice')}
+        </button>
       </div>
       <div className="button-row">
         <button type="button" className="button button-primary" disabled={!p.name.trim()} onClick={() => void saveIt()}>

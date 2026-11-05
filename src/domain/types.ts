@@ -12,7 +12,10 @@ export interface Worker {
   updatedAt?: number;
 }
 
-/** A brand the products are sold under – for accounting only (in the CSV export); everything else goes by customer. */
+/**
+ * A brand / company the bakery bills under – for accounting only. Each customer is billed by
+ * one of them (the weekly accounting summary is split by it); everything else goes by customer.
+ */
 export interface Brand {
   id: string;
   name: string;
@@ -25,6 +28,8 @@ export interface Brand {
 export interface Customer {
   id: string;
   name: string;
+  /** The brand (company) that bills this customer. */
+  billedBy?: string;
   hidden?: boolean;
   updatedAt?: number;
 }
@@ -42,6 +47,8 @@ export interface Product {
   boxesPerPallet?: number;
   /** Pallets one dough usually gives, until there is enough history to go by (default 1). */
   palletsPerDough?: number;
+  /** Prices for accounting, each from a day on (the one in force on an order's day is used). */
+  prices?: Price[];
   hidden?: boolean;
   updatedAt?: number;
 }
@@ -79,17 +86,29 @@ export interface Entry {
 
 // Production (managers): orders, doughs, deviations and stock.
 
+/** A product's price from a day on, in kronor excluding VAT: per pallet and/or per box. */
+export interface Price {
+  from: LocalDate;
+  perPallet?: number;
+  perBox?: number;
+}
+
 /** One product on an order: pallets as a rule, sometimes a few boxes. */
 export interface OrderLine {
   productId: string;
   pallets: number;
   boxes: number;
+  /** Ticked in the office as planned for production. */
+  plannedAt?: number;
 }
 
-/** A customer's order, copied from the paper list, for the day it is produced and packed. */
+/** A customer's order, copied from the paper list, on the day it is to be picked up. */
 export interface Order {
   id: string;
+  /** The order number on the paper order. */
+  orderNumber?: string;
   customerId: string;
+  /** The pickup day (also the day it is produced and packed). */
   day: LocalDate;
   lines: OrderLine[];
   note?: string;
