@@ -30,8 +30,9 @@ are deliberately not in this public repository.
 - **Platform:** a PWA built with React, Vite and TypeScript. It works offline and
   can be added to the home screen. Data is stored on the device (Dexie /
   IndexedDB), with no server. It is published to GitHub Pages on every push to
-  `main`: https://pixelandi.github.io/Bagerikoll/. Pages has to be turned on once
-  under Settings → Pages → Source: GitHub Actions.
+  `main`: https://pixelandi.github.io/Bagerikoll/ (Pages is turned on: Settings → Pages →
+  Source: GitHub Actions; deploys before that failed at the last step). Check the Deploy run
+  in Actions after a push – a failed deploy leaves the old version live.
 - **Languages:** Swedish first, then English (`src/i18n.ts`, same keys in both,
   checked by a test).
 
