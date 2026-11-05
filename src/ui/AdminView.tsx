@@ -5,7 +5,9 @@ import { todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
 import { hashPin } from '../domain/pin.ts';
 import type { Product } from '../domain/types.ts';
+import { palletLayers } from '../domain/pallet.ts';
 import { Card, Field, Fold, Modal, Notice, Page } from './common.tsx';
+import { PalletBadge } from './PalletIcon.tsx';
 
 // Admin (behind the PIN): the managerial controls – names, customers, products and brands (for
 // accounting), this device's
@@ -236,7 +238,7 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
   const saveIt = async () => {
     if (!p.name.trim()) return;
     const prices = (p.prices ?? []).filter((x) => x.from && (x.perPallet !== undefined || x.perBox !== undefined)).sort((a, b) => (a.customerId ?? '').localeCompare(b.customerId ?? '') || (a.from < b.from ? -1 : 1));
-    await db.products.update(p.id, { name: p.name.trim(), code: p.code?.trim() || undefined, brandId: p.brandId || undefined, customerIds: p.customerIds ?? [], boxesPerPallet: p.boxesPerPallet, palletsPerDough: p.palletsPerDough, prices, hidden: p.hidden });
+    await db.products.update(p.id, { name: p.name.trim(), code: p.code?.trim() || undefined, brandId: p.brandId || undefined, customerIds: p.customerIds ?? [], boxesPerPallet: p.boxesPerPallet, boxesPerLayer: p.boxesPerLayer, palletsPerDough: p.palletsPerDough, prices, hidden: p.hidden });
     onClose();
   };
   return (
@@ -280,6 +282,12 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
         <Field label={t('admin.boxesPerPallet')} hint={t('admin.boxesPerPalletHint')}>
           <input type="text" inputMode="numeric" defaultValue={p.boxesPerPallet ?? ''} onChange={(e) => setP({ ...p, boxesPerPallet: num(e.target.value) })} />
         </Field>
+      </div>
+      <div className="field-row admin-layer-row">
+        <Field label={t('admin.boxesPerLayer')} hint={t('admin.boxesPerLayerHint')}>
+          <input type="text" inputMode="numeric" defaultValue={p.boxesPerLayer ?? ''} placeholder="4" onChange={(e) => setP({ ...p, boxesPerLayer: num(e.target.value) })} />
+        </Field>
+        {p.boxesPerPallet ? <PalletBadge boxes={p.boxesPerPallet} perLayer={p.boxesPerLayer} label={t('pallet.label', { boxes: p.boxesPerPallet, layers: palletLayers(p.boxesPerPallet, p.boxesPerLayer).layers })} unit={0.5} /> : null}
       </div>
       <div className="field">
         <span className="field-label">{t('admin.prices')}</span>
@@ -348,17 +356,22 @@ function Station() {
         </span>
       </label>
       <p className="small muted">{t('admin.lockHint')}</p>
-      <button
-        type="button"
-        className="button button-primary"
-        onClick={() => {
-          save({ locked: true, productionOpen: false });
-          closeAdmin();
-          location.hash = '#/';
-        }}
-      >
-        🔒 {t('admin.lock')}
-      </button>
+      <div className="button-row">
+        {(['pack', 'dock'] as const).map((to) => (
+          <button
+            key={to}
+            type="button"
+            className="button button-primary"
+            onClick={() => {
+              save({ locked: true, lockedTo: to, productionOpen: false });
+              closeAdmin();
+              location.hash = to === 'dock' ? '#/dock' : '#/';
+            }}
+          >
+            🔒 {t(to === 'dock' ? 'admin.lockDock' : 'admin.lock')}
+          </button>
+        ))}
+      </div>
     </Card>
   );
 }

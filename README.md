@@ -62,6 +62,40 @@ server, everything lives on the tablet: print or save the protocol as PDF every 
 data file. Whether this satisfies the bakery's certification is for its quality lead or auditor
 to confirm; keep the paper form alongside until they have.
 
+## Navigation by device
+
+- **Ordinary devices** show Packa, Lastkaj, Idag, Logg and Mer. **Admin** is reached from Mer
+  (PIN).
+- **A manager's device** (set in Admin: a manager's phone, the office computer) also shows
+  Produktion and Kontor, open without the PIN. Other devices don't show them at all.
+- **A device locked to a workstation** – the packing station or the loading dock – shows only
+  that, with no tabs; "Lås upp" takes the PIN.
+
+## Lastkaj (the loading dock)
+
+- **Today's deliveries** – the orders picked up today, plus earlier ones from the last week not
+  loaded yet – each with its customer, order number, pallets per product and the pallet's height
+  (boxes per pallet). Ones with a deviation first, then those to load, then the loaded ones;
+  today's loaded deliveries and pallets in numbers at the top.
+- **Check in** like the packers: the **loaders** (several at once) and **one forklift driver**.
+  Adding or removing someone, or changing the driver, asks "Är du säker?"; the last one checked
+  in can't leave (finish the session instead).
+- **Lastad** (with "Är du säker?") marks a delivery loaded with the time, the loaders and the
+  driver; it can be taken back for two minutes. **Avvikelse** (wrong count, damaged, missing,
+  other + a note) is saved with the delivery, time and crew and **shown to the managers** in
+  Kontor and Produktion until one marks it handled.
+
+## Boxes per pallet
+
+A product has its standard count (and boxes per layer, default 4 – the large boxes, 2 × 2 on an
+EUR pallet). While planning in Kontor, each order line can be given its own count – it can
+depend on where the order is delivered – picked from the standard and the counts used before,
+each shown as a pallet at its height, or typed in. When a packer starts a run, today's orders
+for the product are offered; the chosen order's count shows big on the run, with the pallet
+picture (marked when it differs from the standard), and the box numbers (BatchNr) follow it.
+The pallet pictures (`ui/PalletIcon.tsx`) are drawn from a photo of a real pallet; every count
+is drawn at the same scale, so a taller stack looks taller (Mer → Byggstenarna shows them).
+
 ## Kontor (the office; managers – computer, tablet or phone)
 
 The paper order book, entered in parallel while it is tested. Behind the PIN, or open on a

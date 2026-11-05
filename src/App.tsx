@@ -7,6 +7,7 @@ import { useSettings } from './settings.ts';
 import { AdminView } from './ui/AdminView.tsx';
 import { Icon } from './ui/common.tsx';
 import { DesignView } from './ui/DesignView.tsx';
+import { DockView } from './ui/DockView.tsx';
 import { MoreView } from './ui/MoreView.tsx';
 import { PackView } from './ui/PackView.tsx';
 import { LogView } from './ui/ProductionLog.tsx';
@@ -19,15 +20,18 @@ import { TodayView } from './ui/TodayView.tsx';
 // While the app is tested, a "Beta" badge shows in the header (as in Lönekoll).
 const BETA = true;
 
-type TabIcon = 'pack' | 'today' | 'month' | 'days' | 'slips' | 'lock' | 'more';
-const TABS: { route: Route; icon: TabIcon; label: TextKey; match: Route['name'][] }[] = [
+type TabIcon = 'pack' | 'truck' | 'today' | 'month' | 'days' | 'slips' | 'more';
+type Tab = { route: Route; icon: TabIcon; label: TextKey; match: Route['name'][]; managers?: boolean };
+// The managers' tabs (Produktion, Kontor) show only on a manager's device, or while admin is
+// open; Admin itself is reached from Mer. A device locked to a workstation shows no tabs.
+const TABS: Tab[] = [
   { route: { name: 'pack' }, icon: 'pack', label: 'nav.pack', match: ['pack'] },
+  { route: { name: 'dock' }, icon: 'truck', label: 'nav.dock', match: ['dock'] },
   { route: { name: 'today' }, icon: 'today', label: 'nav.today', match: ['today'] },
-  { route: { name: 'production' }, icon: 'month', label: 'nav.production', match: ['production'] },
-  { route: { name: 'office' }, icon: 'days', label: 'nav.office', match: ['office'] },
+  { route: { name: 'production' }, icon: 'month', label: 'nav.production', match: ['production'], managers: true },
+  { route: { name: 'office' }, icon: 'days', label: 'nav.office', match: ['office'], managers: true },
   { route: { name: 'log' }, icon: 'slips', label: 'nav.log', match: ['log', 'protocol'] },
-  { route: { name: 'admin' }, icon: 'lock', label: 'nav.admin', match: ['admin'] },
-  { route: { name: 'more' }, icon: 'more', label: 'nav.more', match: ['more', 'design'] },
+  { route: { name: 'more' }, icon: 'more', label: 'nav.more', match: ['more', 'design', 'admin'] },
 ];
 
 export function App() {
@@ -84,7 +88,7 @@ export function App() {
           )}
           {admin && !settings.locked && <span className="admin-badge">{t('admin.badge')}</span>}
         </header>
-        {locked && route.name !== 'protocol' ? <PackView /> : <Screen route={route} />}
+        {locked && route.name !== 'protocol' ? settings.lockedTo === 'dock' ? <DockView /> : <PackView /> : <Screen route={route} />}
         {!settings.locked && <TabBar route={route} />}
         {pin && (
           <PinPad
@@ -106,6 +110,8 @@ function Screen({ route }: { route: Route }) {
   switch (route.name) {
     case 'today':
       return <TodayView />;
+    case 'dock':
+      return <DockView />;
     case 'production':
       return <ProductionView />;
     case 'office':
@@ -126,10 +132,11 @@ function Screen({ route }: { route: Route }) {
 }
 
 function TabBar({ route }: { route: Route }) {
-  const { t } = useApp();
+  const { t, admin, settings } = useApp();
+  const manager = admin || !!settings.productionOpen;
   return (
     <nav className="tabbar">
-      {TABS.map((tab) => (
+      {TABS.filter((tab) => manager || !tab.managers).map((tab) => (
         <a key={tab.label} href={href(tab.route)} className={tab.match.includes(route.name) ? 'active' : ''}>
           <Icon name={tab.icon} />
           <span>{t(tab.label)}</span>

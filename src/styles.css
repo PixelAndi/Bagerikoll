@@ -1715,3 +1715,56 @@ input[type='checkbox'] {
   .print-day { break-inside: auto; }
   .print-day h2 { break-after: avoid; }
 }
+
+/* The pallet picture (PalletIcon): kraft boxes with white labels on an EUR pallet. */
+.pallet-icon { display: block; overflow: visible; }
+.pallet-box-front { fill: #c99a5b; stroke: #6e4b22; stroke-width: 0.6; }
+.pallet-box-top { fill: #e0bb83; stroke: #6e4b22; stroke-width: 0.6; stroke-linejoin: round; }
+.pallet-box-side { fill: #a97a40; stroke: #6e4b22; stroke-width: 0.6; stroke-linejoin: round; }
+.pallet-box-label { fill: #fbfaf7; stroke: none; }
+.pallet-wood-front { fill: #d9b98a; stroke: #6b5232; stroke-width: 0.5; }
+.pallet-wood-block { fill: #b8956a; stroke: #6b5232; stroke-width: 0.5; }
+.pallet-wood-top { fill: #e4cba2; stroke: #6b5232; stroke-width: 0.5; }
+.pallet-wood-side { fill: #a88759; stroke: #6b5232; stroke-width: 0.5; }
+.pallet-ruler line { stroke: var(--muted); stroke-width: 0.8; }
+.pallet-badge { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+.pallet-badge-text { font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.pallet-badge-big .pallet-badge-text { font-size: 1.1rem; }
+
+.design-pallets { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin: 8px 0 16px; }
+
+/* Lastkaj: the deliveries, big enough to read from the forklift. */
+.dock-delivery { border-width: 2px; }
+.dock-toLoad { border-color: var(--border); }
+.dock-deviation { border-color: var(--cal-missing-strong); background: var(--cal-missing); }
+.dock-loaded { border-color: var(--cal-worked-strong); background: var(--cal-worked); }
+.dock-customer { font-size: 1.3rem; }
+.dock-total { font-size: 1.6rem; white-space: nowrap; }
+.dock-lines { list-style: none; padding: 0; margin: 6px 0; }
+.dock-lines li { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; padding: 6px 0; border-top: 1px solid var(--border); }
+.dock-qty { font-size: 1.15rem; font-weight: 700; }
+.dock-buttons { display: grid; grid-template-columns: 1fr 1.6fr; gap: 12px; margin-top: 8px; }
+.dock-buttons .button { min-height: 64px; font-size: 1.15rem; }
+.dock-done { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; margin-top: 6px; }
+.dock-other { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; flex-wrap: wrap; }
+.dock-other .button-small { min-height: 44px; margin-left: 6px; }
+.driver-chip.on { border-color: var(--cal-missing-strong); background: var(--cal-missing); color: var(--text); }
+
+/* Boxes per pallet: on an order line in Kontor, the picker, and the run at the station. */
+.bpp-chip { margin: 0 0 4px 30px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font: inherit; font-size: 0.78rem; font-weight: 700; padding: 3px 9px; min-height: 30px; cursor: pointer; }
+.bpp-chip.bpp-set { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+.bpp-chip.bpp-missing { border-color: var(--cal-missing-strong); background: var(--cal-missing); }
+.bpp-options { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin: 10px 0; }
+.bpp-option { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 2px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); padding: 8px 10px; cursor: pointer; font: inherit; }
+.bpp-option.on { border-color: var(--primary); background: var(--primary-soft); }
+.bpp-custom { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.bpp-custom .field { max-width: 140px; margin: 0; }
+.run-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 8px 12px; margin-bottom: 10px; }
+.run-head-text { flex: 1 1 300px; min-width: 0; }
+.run-head .cal-chips { margin-bottom: 0; }
+.run-pallet { display: flex; align-items: flex-end; gap: 8px; padding: 4px 8px; border-radius: 10px; flex: none; }
+.run-pallet-special { background: var(--cal-missing); outline: 2px solid var(--cal-missing-strong); }
+.run-pallet-n { font-size: 2rem; line-height: 1; }
+.run-orders { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.run-order { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; text-align: left; min-height: 72px; }
+.admin-layer-row { align-items: flex-end; }

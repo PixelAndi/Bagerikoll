@@ -11,6 +11,14 @@ export function MoreView() {
   const { t, settings, save } = useApp();
   return (
     <Page title={t('nav.more')}>
+      <a className="card issue-link" href={href({ name: 'admin' })}>
+        <span>
+          <strong>🔒 {t('nav.admin')}</strong>
+          <br />
+          <span className="small muted">{t('more.adminHint')}</span>
+        </span>
+        <Icon name="chevronRight" />
+      </a>
       <Card>
         <Field label={t('more.language')}>
           <select value={settings.language} onChange={(e) => save({ language: e.target.value as Language })}>

@@ -9,13 +9,17 @@ export interface Settings {
   theme: Theme;
   /** This device's name in the log, e.g. "Packning 1". */
   station: string;
-  /** Locked to the packing station: only the packing view, leaving it takes the admin PIN. */
+  /** Locked to a workstation: only its view; leaving it takes the admin PIN. */
   locked: boolean;
+  /** Which workstation a locked device shows: the packing station (default) or the loading dock. */
+  lockedTo?: 'pack' | 'dock';
+  /** The loading dock session running on this device. */
+  dockSessionId?: string;
   /** The admin PIN's hash when it has been changed on this device (see domain/pin.ts). */
   pinHash?: string;
   /** The changed PIN's number of digits (the PIN pad checks once that many are typed). */
   pinLength?: number;
-  /** A manager's own phone: Produktion opens without the PIN on this device (never on a locked station). */
+  /** A manager's device (own phone, the office computer): Produktion and Kontor are shown and open without the PIN (never on a locked station). Other devices don't show them. */
   productionOpen?: boolean;
   /** The run (product on the line) open at this station. */
   runId?: string;

@@ -57,7 +57,10 @@ describe('the protocol row', () => {
     expect(batchRange(5)).toBe('01–05');
     expect(batchRange(0)).toBe('–');
   });
-  it("can't number the boxes without the pallet size", () => {
+  it("uses the run's own boxes per pallet (from the order) over the product's", () => {
+    expect(runCount(run({ boxesPerPallet: 30 }), [entry('pallet', 2), entry('box', 3)], { id: 'p', name: 'Testbröd', boxesPerPallet: 20 }).totalBoxes).toBe(63);
+  });
+    it("can't number the boxes without the pallet size", () => {
     expect(runCount(run(), [entry('pallet', 2)], { id: 'p', name: 'Testbröd' }).totalBoxes).toBeUndefined();
   });
   it('is signed by those who packed and those who ticked the checks', () => {

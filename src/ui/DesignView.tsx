@@ -1,6 +1,8 @@
 import { useApp } from '../app-context.ts';
 import { href } from '../router.ts';
+import { palletLayers } from '../domain/pallet.ts';
 import { Card, Fold, Notice, Page } from './common.tsx';
+import { PalletBadge } from './PalletIcon.tsx';
 
 // The building blocks the pages are made of, as in Lönekoll – with made-up examples, so the look
 // can be seen and reused. The class names are the ones in styles.css.
@@ -40,6 +42,14 @@ export function DesignView() {
           </span>
         </div>
       </section>
+
+      <h2 className="issues-heading">{t('design.pallets')}</h2>
+      {/* PalletIcon / PalletBadge: the pallet at its height – 4 large boxes a layer unless the product says otherwise. */}
+      <div className="design-pallets">
+        {[8, 12, 16, 20, 24, 28, 30, 32, 36, 40].map((n) => (
+          <PalletBadge key={n} boxes={n} label={t('pallet.label', { boxes: n, layers: palletLayers(n).layers })} unit={0.8} />
+        ))}
+      </div>
 
       <h2 className="issues-heading">{t('design.chips')}</h2>
       {/* .cal-chips / .cal-chip(-ok|-warn|-vacation) */}

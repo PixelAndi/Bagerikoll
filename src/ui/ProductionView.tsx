@@ -8,6 +8,7 @@ import { asPallets, planRow, shortDays, stockAt, yieldDays, yieldStats, type Pla
 import { sortProducts } from '../domain/production.ts';
 import type { Deviation, DeviationKind, Order, Product } from '../domain/types.ts';
 import { Card, Field, Fold, Modal, Notice, Page } from './common.tsx';
+import { LoadingDeviations } from './LoadingDeviations.tsx';
 import { OrderEditor, Stepper } from './OrderEditor.tsx';
 
 // Produktion (managers, made for a phone): the day's plan at a glance – how many doughs each
@@ -117,6 +118,8 @@ function Production() {
         )}
         <p className="small muted">{t('prod.planKey')}</p>
       </section>
+
+      <LoadingDeviations />
 
       <ToCheck input={input} products={products} onDeviation={(productId, d) => setDeviationFor({ productId, day: d })} dayName={dayName} />
 

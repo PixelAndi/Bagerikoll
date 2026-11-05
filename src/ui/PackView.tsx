@@ -5,10 +5,12 @@ import { useCatalog, useEntriesOn } from '../data.ts';
 import { todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
 import { byProduct, canWorkerUndo, groupByCustomer, sortProducts, total } from '../domain/production.ts';
+import { lineBoxesPerPallet, palletLayers } from '../domain/pallet.ts';
 import { batchRange, canPack, runCount, testPassed, testState } from '../domain/runs.ts';
 import type { DetectorTest, Entry, EntryKind, Product, Run } from '../domain/types.ts';
 import { href } from '../router.ts';
 import { Field, Modal, Notice, Page } from './common.tsx';
+import { PalletBadge, PalletIcon } from './PalletIcon.tsx';
 
 // The packing station: who is packing, which product (under its customer), a big pallet button
 // and box buttons in steps.
@@ -254,8 +256,10 @@ function RunHead({ run, product, entries, now }: { run: Run; product: Product; e
   const c = runCount(run, entries, product);
   const state = testState(run, now);
   const range = batchRange(c.totalBoxes);
+  const per = run.boxesPerPallet ?? product.boxesPerPallet;
   return (
-    <>
+    <div className="run-head">
+      <div className="run-head-text">
       <div className="cal-focus-head">
         <strong className="pack-product-name">{product.name}</strong>
         <span className="small muted">{[product.code, customers.find((x) => x.id === run.customerId)?.name].filter(Boolean).join(' · ')}</span>
@@ -266,7 +270,19 @@ function RunHead({ run, product, entries, now }: { run: Run; product: Product; e
         <span className={`cal-chip ${range ? '' : 'cal-chip-warn'}`}>{range ? t('run.batch', { range }) : t('run.noBoxesPerPallet')}</span>
         {state.kind === 'ok' && <span className={`cal-chip ${state.soon ? 'cal-chip-warn' : 'cal-chip-ok'}`}>{t(state.soon ? 'run.testSoon' : 'run.testOk', { time: clock(state.dueAt) })}</span>}
       </div>
-    </>
+      </div>
+      {/* How high to stack: the boxes per pallet for this order, as a picture. */}
+      {per ? (
+        <div className={`run-pallet ${run.boxesPerPallet && run.boxesPerPallet !== product.boxesPerPallet ? 'run-pallet-special' : ''}`}>
+          <PalletIcon boxes={per} perLayer={product.boxesPerLayer} unit={0.62} title={t('pallet.label', { boxes: per, layers: palletLayers(per, product.boxesPerLayer).layers })} />
+          <span>
+            <strong className="run-pallet-n">{per}</strong> {t('pallet.perPallet')}
+            <br />
+            <span className="small">{t('pallet.layers', { layers: palletLayers(per, product.boxesPerLayer).layers })}</span>
+          </span>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -333,13 +349,29 @@ function StartRun({ product, onClose }: { product: Product; onClose: () => void 
   const { t, settings, save } = useApp();
   const { customers } = useCatalog();
   const own = customers.filter((c) => product.customerIds?.includes(c.id));
+  // Today's orders with this product: packing for one of them takes its customer and its boxes per pallet.
+  const today = todayLocal();
+  const todays = (useLiveQuery(() => db.orders.where('day').equals(today).toArray(), [today]) ?? []).filter((o) => !o.cancelled && o.lines.some((l) => l.productId === product.id && l.pallets + l.boxes > 0));
+  const [orderId, setOrderId] = useState<string>();
+  const chosenOrder = todays.find((o) => o.id === orderId) ?? (todays.length === 1 && orderId === undefined ? todays[0] : undefined);
   const [chosen, setChosen] = useState('');
   // One customer: it is that one (worked out on each render: the customer list may load after the dialog opens).
   const customerId = chosen || (own.length === 1 ? own[0].id : '') || product.customerIds?.[0] || '';
   const setCustomerId = setChosen;
   const start = async () => {
     const id = newId();
-    await db.runs.put({ id, day: todayLocal(), station: settings.station, productId: product.id, customerId: customerId || undefined, startedAt: Date.now(), tests: [] });
+    const line = chosenOrder?.lines.find((l) => l.productId === product.id);
+    await db.runs.put({
+      id,
+      day: todayLocal(),
+      station: settings.station,
+      productId: product.id,
+      customerId: chosenOrder?.customerId ?? (customerId || undefined),
+      orderId: chosenOrder?.id,
+      boxesPerPallet: line ? lineBoxesPerPallet(line, product) : undefined,
+      startedAt: Date.now(),
+      tests: [],
+    });
     save({ runId: id });
     onClose();
   };
@@ -348,7 +380,32 @@ function StartRun({ product, onClose }: { product: Product; onClose: () => void 
       <p className="pack-pad-show">
         <strong>{product.name}</strong> {product.code && <span className="muted">· {product.code}</span>}
       </p>
-      {own.length > 1 && (
+      {todays.length > 0 && (
+        <div className="field">
+          <span className="field-label">{t('run.forOrder')}</span>
+          <div className="run-orders">
+            {todays.map((o) => {
+              const line = o.lines.find((l) => l.productId === product.id)!;
+              const per = lineBoxesPerPallet(line, product);
+              return (
+                <button key={o.id} type="button" className={`pack-name run-order ${chosenOrder?.id === o.id ? 'on' : ''}`} aria-pressed={chosenOrder?.id === o.id} onClick={() => setOrderId(o.id)}>
+                  <span>
+                    {customers.find((c) => c.id === o.customerId)?.name ?? '?'}
+                    {o.orderNumber && <span className="muted"> #{o.orderNumber}</span>}
+                    <br />
+                    <span className="small">{t('prod.nPallets', { n: line.pallets })}</span>
+                  </span>
+                  {per && <PalletBadge boxes={per} perLayer={product.boxesPerLayer} label={t('pallet.short', { boxes: per })} unit={0.4} />}
+                </button>
+              );
+            })}
+            <button type="button" className={`pack-name run-order ${orderId === '' || (!chosenOrder && todays.length > 1) ? 'on' : ''}`} onClick={() => setOrderId('')}>
+              {t('run.noOrder')}
+            </button>
+          </div>
+        </div>
+      )}
+      {own.length > 1 && !chosenOrder && (
         <div className="field">
           <span className="field-label">{t('run.forCustomer')}</span>
           <div className="pack-names">
@@ -360,9 +417,9 @@ function StartRun({ product, onClose }: { product: Product; onClose: () => void 
           </div>
         </div>
       )}
-      {!product.boxesPerPallet && <Notice kind="warn">{t('run.noBoxesPerPalletLong')}</Notice>}
+      {!product.boxesPerPallet && !(chosenOrder && lineBoxesPerPallet(chosenOrder.lines.find((l) => l.productId === product.id)!, product)) && <Notice kind="warn">{t('run.noBoxesPerPalletLong')}</Notice>}
       <p className="small muted">{t('run.startHint')}</p>
-      <button type="button" className="button button-primary pack-start" disabled={own.length > 1 && !chosen} onClick={() => void start()}>
+      <button type="button" className="button button-primary pack-start" disabled={(own.length > 1 && !chosen && !chosenOrder) || (todays.length > 1 && orderId === undefined)} onClick={() => void start()}>
         {t('run.start', { product: product.name })}
       </button>
     </Modal>

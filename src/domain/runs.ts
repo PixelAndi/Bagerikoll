@@ -47,7 +47,8 @@ export function runCount(run: Run, entries: Entry[], product?: Product): RunCoun
       if (e.kind === 'pallet') pallets += e.quantity;
       else boxes += e.quantity;
     }
-  const per = product?.boxesPerPallet;
+  // The run's own count (set from the order it is packed for), else the product's.
+  const per = run.boxesPerPallet ?? product?.boxesPerPallet;
   return { pallets, boxes, totalBoxes: per ? pallets * per + boxes : pallets ? undefined : boxes };
 }
 

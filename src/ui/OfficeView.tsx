@@ -5,9 +5,12 @@ import { useCatalog } from '../data.ts';
 import { addDays, isoWeek, mondayOf, todayLocal, type LocalDate } from '../days.ts';
 import { db } from '../db.ts';
 import { accountingSummary, duplicateNumbers, lineAmount, orderTotals, planState, priceOn, summaryCsv, type BillerSummary } from '../domain/office.ts';
-import type { Order } from '../domain/types.ts';
-import { Card, Modal, Notice, Page } from './common.tsx';
+import { boxCountOptions, lineBoxesPerPallet, palletLayers } from '../domain/pallet.ts';
+import type { Order, Product } from '../domain/types.ts';
+import { Card, Field, Modal, Notice, Page } from './common.tsx';
+import { LoadingDeviations } from './LoadingDeviations.tsx';
 import { OrderEditor } from './OrderEditor.tsx';
+import { PalletBadge } from './PalletIcon.tsx';
 
 // Kontor (managers; a computer, tablet or phone): the paper orders entered on the day they are
 // picked up, a week at a time. Each product on an order is ticked as planned for production; an
@@ -143,6 +146,8 @@ function Office() {
         </div>
       </section>
 
+      <LoadingDeviations />
+
       {(soon.length > 0 || noBiller.length > 0 || noPrice.length > 0 || weekDupes.length > 0) && (
         <Card title={t('prod.toCheck')} className="cal-check">
           <ul className="cal-check-list">
@@ -252,6 +257,8 @@ function OrderCard({ order, duplicate, onEdit, onMove }: { order: Order; duplica
   const customer = customers.find((c) => c.id === order.customerId);
   const biller = brands.find((b) => b.id === customer?.billedBy);
   const state = planState(order);
+  const [picking, setPicking] = useState<string | null>(null);
+  const pickProduct = products.find((p) => p.id === picking);
   const toggle = (productId: string) =>
     db.orders.update(order.id, { lines: order.lines.map((l) => (l.productId === productId ? { ...l, plannedAt: l.plannedAt ? undefined : Date.now() } : l)) });
   const amount = order.lines.reduce<number | undefined>((s, l) => {
@@ -295,11 +302,18 @@ function OrderCard({ order, duplicate, onEdit, onMove }: { order: Order; duplica
                     <strong className="office-line-qty">{[l.pallets ? t('prod.nPallets', { n: l.pallets }) : '', l.boxes ? t('prod.nBoxes', { n: l.boxes }) : ''].filter(Boolean).join(' + ')}</strong>
                   </span>
                 </label>
+                {p && l.pallets > 0 && (
+                  <button type="button" className={`bpp-chip ${lineBoxesPerPallet(l, p) ? '' : 'bpp-missing'} ${l.boxesPerPallet && l.boxesPerPallet !== p.boxesPerPallet ? 'bpp-set' : ''}`} disabled={order.cancelled} onClick={() => setPicking(l.productId)}>
+                    {lineBoxesPerPallet(l, p) ? t('pallet.short', { boxes: lineBoxesPerPallet(l, p)! }) : t('pallet.unknown')}
+                  </button>
+                )}
               </li>
             );
           })}
       </ul>
       {order.note && <p className="small muted">{order.note}</p>}
+      {order.shippedAt !== undefined && <p className="small ok">✓ {t('dock.loadedAt', { time: new Date(order.shippedAt).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) })}</p>}
+      {picking && pickProduct && <BoxCountPicker order={order} product={pickProduct} onClose={() => setPicking(null)} />}
       <div className="office-order-foot">
         <span className="small">
           <strong>{t('office.orderPallets', { pallets: orderTotals([order]).pallets })}</strong>
@@ -507,5 +521,49 @@ function SummarySheet({ summary, title }: { summary: BillerSummary[]; title: str
       ))}
       <p className="small">{t('office.printedAt', { when: new Date().toLocaleString('sv-SE') })}</p>
     </>
+  );
+}
+
+/**
+ * Boxes per pallet for one product on an order, chosen while planning (it can differ by where the
+ * order is delivered): the product's standard and the counts used before, each with its pallet,
+ * or another number. The packers see it when they start the run.
+ */
+function BoxCountPicker({ order, product, onClose }: { order: Order; product: Product; onClose: () => void }) {
+  const { t } = useApp();
+  const allOrders = useLiveQuery(() => db.orders.toArray(), []) ?? [];
+  const productId = product.id;
+  const line = order.lines.find((l) => l.productId === productId)!;
+  const current = lineBoxesPerPallet(line, product);
+  const [custom, setCustom] = useState(current && !boxCountOptions(product, allOrders, order.customerId).includes(current) ? String(current) : '');
+  const options = boxCountOptions(product, allOrders, order.customerId);
+  const choose = async (n: number | undefined) => {
+    // The product's own standard is stored as "not set", so a later change of the standard applies.
+    const value = n && n !== product.boxesPerPallet ? n : undefined;
+    await db.orders.update(order.id, { lines: order.lines.map((l) => (l.productId === productId ? { ...l, boxesPerPallet: value } : l)) });
+    onClose();
+  };
+  const customN = Number(custom);
+  return (
+    <Modal title={t('pallet.pickTitle', { product: product.name })} onClose={onClose}>
+      <p className="small muted">{t('pallet.pickHint')}</p>
+      <div className="bpp-options">
+        {options.map((n) => (
+          <button key={n} type="button" className={`bpp-option ${n === current ? 'on' : ''}`} aria-pressed={n === current} onClick={() => void choose(n)}>
+            <PalletBadge boxes={n} perLayer={product.boxesPerLayer} label={t('pallet.label', { boxes: n, layers: palletLayers(n, product.boxesPerLayer).layers })} unit={0.55} />
+            {n === product.boxesPerPallet && <span className="small muted">{t('pallet.standard')}</span>}
+          </button>
+        ))}
+      </div>
+      <div className="bpp-custom">
+        <Field label={t('pallet.other')}>
+          <input type="text" inputMode="numeric" value={custom} onChange={(e) => setCustom(e.target.value.replace(/\D/g, '').slice(0, 3))} />
+        </Field>
+        {customN > 0 && <PalletBadge boxes={customN} perLayer={product.boxesPerLayer} label={t('pallet.label', { boxes: customN, layers: palletLayers(customN, product.boxesPerLayer).layers })} unit={0.55} />}
+        <button type="button" className="button button-primary" disabled={!(customN > 0)} onClick={() => void choose(customN)}>
+          {t('admin.save')}
+        </button>
+      </div>
+    </Modal>
   );
 }

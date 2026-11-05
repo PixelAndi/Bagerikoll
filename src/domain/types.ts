@@ -43,8 +43,10 @@ export interface Product {
   code?: string;
   /** The customers it is made for (usually one). */
   customerIds?: string[];
-  /** Boxes on a full pallet, if fixed – lets boxes be counted as part of a pallet. */
+  /** Boxes on a full pallet as a rule (an order line can say otherwise). */
   boxesPerPallet?: number;
+  /** Boxes in one layer on the pallet (for the pallet picture; default 4). */
+  boxesPerLayer?: number;
   /** Pallets one dough usually gives, until there is enough history to go by (default 1). */
   palletsPerDough?: number;
   /** Prices for accounting, each from a day on (the one in force on an order's day is used). */
@@ -53,10 +55,16 @@ export interface Product {
   updatedAt?: number;
 }
 
-/** A spell at the packing station by one or more workers together. */
+/**
+ * A spell at a station: at the packing station one or more packers together; at the loading dock
+ * (kind 'dock') the loaders in `workerIds` and at most one forklift driver.
+ */
 export interface Session {
   id: string;
+  kind?: 'pack' | 'dock';
   workerIds: string[];
+  /** The forklift driver (loading dock only; one at a time). */
+  driverId?: string;
   startedAt: number;
   endedAt?: number;
   /** Which device/station it ran on (the name set in Admin). */
@@ -105,6 +113,8 @@ export interface OrderLine {
   boxes: number;
   /** Ticked in the office as planned for production. */
   plannedAt?: number;
+  /** Boxes per pallet for this order, set while planning (e.g. by where it is delivered); else the product's. */
+  boxesPerPallet?: number;
 }
 
 /** A customer's order, copied from the paper list, on the day it is to be picked up. */
@@ -120,6 +130,8 @@ export interface Order {
   createdAt: number;
   /** Loaded and sent: from then on it no longer counts in stock. */
   shippedAt?: number;
+  /** Who confirmed it loaded at the loading dock. */
+  loadedBy?: { workerIds: string[]; driverId?: string };
   /** Called off: kept, but counted nowhere. */
   cancelled?: boolean;
   updatedAt?: number;
@@ -142,10 +154,12 @@ export interface DoughCount {
  * - other;
  * and from the packing station, tied to the run (the product being packed) and the time:
  * - detector: a metal detector test piece not found;
- * - packing: anything else noted at the packing.
+ * - packing: anything else noted at the packing;
+ * and from the loading dock, tied to the delivery (order):
+ * - loading: something wrong when loading (wrong count, damage, missing …).
  * A day with a low-yield or other deviation is left out of the product's usual yield.
  */
-export type DeviationKind = 'scrapped' | 'lowYield' | 'other' | 'detector' | 'packing';
+export type DeviationKind = 'scrapped' | 'lowYield' | 'other' | 'detector' | 'packing' | 'loading';
 
 export interface Deviation {
   id: string;
@@ -160,6 +174,12 @@ export interface Deviation {
   at: number;
   /** The run it happened in (packing station deviations). */
   runId?: string;
+  /** The delivery it concerns (loading dock deviations). */
+  orderId?: string;
+  /** What went wrong at the loading dock. */
+  loadingKind?: 'count' | 'damaged' | 'missing' | 'other';
+  /** A manager has seen to it. */
+  handled?: { at: number; note?: string };
   /** Who reported it. */
   workerIds?: string[];
   /** Taken back (a mistake): kept, counted nowhere. */
@@ -209,6 +229,10 @@ export interface Run {
   productId: string;
   /** Who it is packed for (the product's customer, or the one chosen if it has several). */
   customerId?: string;
+  /** The order it is packed for, when chosen at the start. */
+  orderId?: string;
+  /** Boxes per pallet in this run (from the order); else the product's. */
+  boxesPerPallet?: number;
   startedAt: number;
   endedAt?: number;
   tests: DetectorTest[];

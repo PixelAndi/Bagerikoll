@@ -44,6 +44,17 @@ the customer's billing company (`Customer.billedBy` → a brand), CSV. The owner
 book lists per day the customers' orders with pallets per product, the day's pallets at the
 top, and the week's pallets per billing company.
 
+**Navigation by device (owner's decision):** ordinary devices show Packa, Lastkaj, Idag, Logg, Mer
+(Admin is under Mer); a manager's device (`settings.productionOpen`) or open admin also shows
+Produktion and Kontor; a locked device (`settings.lockedTo`: 'pack' | 'dock') shows only its
+station. **Lastkaj** (`ui/DockView.tsx`, `domain/dock.ts` + tests): today's deliveries; loaders
+(several) and one forklift driver check in (`Session.kind 'dock'`, `driverId`); "Lastad" sets
+`shippedAt` + `loadedBy`; `loading` deviations go to the managers (`ui/LoadingDeviations.tsx` in
+Kontor and Produktion) until marked handled. **Boxes per pallet** can be set per order line while
+planning (`OrderLine.boxesPerPallet`, `domain/pallet.ts`); a run takes it from the order chosen
+at its start (`Run.orderId/boxesPerPallet`) and shows it with `PalletIcon` (EUR pallet, 4 boxes a
+layer by default, `Product.boxesPerLayer`).
+
 **Admin-only = only what the owner explicitly makes admin-only.** Don't hide
 anything else behind the PIN. Now admin-only: managing names, customers, products and
 brands; Produktion and Kontor (the managers' parts; or a manager's device set in Admin); this device's station name and the workstation lock (and unlocking
