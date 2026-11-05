@@ -12,6 +12,7 @@ import { PackView } from './ui/PackView.tsx';
 import { LogView } from './ui/ProductionLog.tsx';
 import { PinPad } from './ui/PinPad.tsx';
 import { ProductionView } from './ui/ProductionView.tsx';
+import { ProtocolView } from './ui/ProtocolView.tsx';
 import { TodayView } from './ui/TodayView.tsx';
 
 // While the app is tested, a "Beta" badge shows in the header (as in Lönekoll).
@@ -22,7 +23,7 @@ const TABS: { route: Route; icon: TabIcon; label: TextKey; match: Route['name'][
   { route: { name: 'pack' }, icon: 'pack', label: 'nav.pack', match: ['pack'] },
   { route: { name: 'today' }, icon: 'today', label: 'nav.today', match: ['today'] },
   { route: { name: 'production' }, icon: 'month', label: 'nav.production', match: ['production'] },
-  { route: { name: 'log' }, icon: 'slips', label: 'nav.log', match: ['log'] },
+  { route: { name: 'log' }, icon: 'slips', label: 'nav.log', match: ['log', 'protocol'] },
   { route: { name: 'admin' }, icon: 'lock', label: 'nav.admin', match: ['admin'] },
   { route: { name: 'more' }, icon: 'more', label: 'nav.more', match: ['more', 'design'] },
 ];
@@ -81,7 +82,7 @@ export function App() {
           )}
           {admin && !settings.locked && <span className="admin-badge">{t('admin.badge')}</span>}
         </header>
-        {locked ? <PackView /> : <Screen route={route} />}
+        {locked && route.name !== 'protocol' ? <PackView /> : <Screen route={route} />}
         {!settings.locked && <TabBar route={route} />}
         {pin && (
           <PinPad
@@ -105,6 +106,8 @@ function Screen({ route }: { route: Route }) {
       return <TodayView />;
     case 'production':
       return <ProductionView />;
+    case 'protocol':
+      return <ProtocolView day={route.day} />;
     case 'log':
       return <LogView />;
     case 'admin':

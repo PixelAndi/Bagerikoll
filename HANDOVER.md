@@ -90,6 +90,16 @@ Orders, doughs, deviations, stock and the dough recommendation with its chance o
 enough; customers in Admin; the packing station grouped by customer, "Byt packare", and
 +1 pallet / +1, +5, +10 boxes.
 
+## Phase 2b, built: runs and the packing protocol
+
+The paper packing form (time, product, BatchNr 01–X, pallets + extra boxes, customer, metal
+detector Ferro 3.5 / Non-Ferro 4.5 / Rostfri 4.0, all boxes labelled, machine cleaned after the
+bread change, signature, deviations) is now filled in by the app – see README. The owner's
+answers: it is a compliance record; BatchNr is box 01 to the last box of the run; the detector
+is tested at each product change and every two hours; labels are checked last; cleaning is
+after every product, before the next; selected users count as signatures; deviations are tied
+to the time and the product being packed.
+
 ## Known limits and open decisions (raise these with the owner)
 
 1. **Each device keeps its own data.** For now devices swap a data file (Mer → Datafil).
@@ -102,6 +112,9 @@ enough; customers in Admin; the packing station grouped by customer, "Byt packar
    Until then an order is marked "Lastad" by hand.
 7. **Orders** are typed in by hand from the paper list; later they should come in
    automatically and the managers only confirm the production list.
+8. **Compliance sign-off.** The protocol mirrors the paper form, but the bakery's quality lead
+   or auditor should approve the digital record (and that the data lives on one tablet until
+   there is a server) before the paper is dropped.
 2. **The PIN is a lock against casual use, not real security.** The app runs
    only in the browser and its code is public, so the default PIN can be worked
    out from the repository. Change it per device under Admin.

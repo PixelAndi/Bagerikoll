@@ -6,7 +6,8 @@ import { addDays, todayLocal } from '../days.ts';
 import { db } from '../db.ts';
 import { byProduct, toCsv, total } from '../domain/production.ts';
 import type { Entry } from '../domain/types.ts';
-import { Field, Fold, Page } from './common.tsx';
+import { href } from '../router.ts';
+import { Field, Fold, Icon, Page } from './common.tsx';
 
 // Who packed what and when – open to everyone. Only voiding and restoring entries needs admin.
 
@@ -14,6 +15,14 @@ export function LogView() {
   const { t } = useApp();
   return (
     <Page title={t('nav.log')}>
+      <a className="card issue-link" href={href({ name: 'protocol' })}>
+        <span>
+          <strong>{t('protocol.title')}</strong>
+          <br />
+          <span className="small muted">{t('protocol.linkHint')}</span>
+        </span>
+        <Icon name="chevronRight" />
+      </a>
       <Log />
     </Page>
   );

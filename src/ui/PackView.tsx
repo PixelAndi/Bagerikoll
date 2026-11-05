@@ -5,9 +5,10 @@ import { useCatalog, useEntriesOn } from '../data.ts';
 import { todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
 import { byProduct, canWorkerUndo, groupByCustomer, sortProducts, total } from '../domain/production.ts';
-import type { Entry, EntryKind, Product } from '../domain/types.ts';
+import { batchRange, canPack, runCount, testPassed, testState } from '../domain/runs.ts';
+import type { DetectorTest, Entry, EntryKind, Product, Run } from '../domain/types.ts';
 import { href } from '../router.ts';
-import { Modal, Notice, Page } from './common.tsx';
+import { Field, Modal, Notice, Page } from './common.tsx';
 
 // The packing station: who is packing, which product (under its customer), a big pallet button
 // and box buttons in steps.
@@ -63,10 +64,15 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
   const today = todayLocal();
   const todays = useEntriesOn(today);
   const mine = useMemo(() => todays.filter((e) => e.sessionId === sessionId), [todays, sessionId]);
+  const stored = useLiveQuery(() => (settings.runId ? db.runs.get(settings.runId) : undefined), [settings.runId]);
+  const run = stored && !stored.endedAt ? stored : undefined;
+  const runEntries = useLiveQuery(() => (run ? db.entries.where('runId').equals(run.id).toArray() : []), [run?.id]) ?? [];
   const [filter, setFilter] = useState<string>();
-  const [productId, setProductId] = useState<string>();
   const [boxPad, setBoxPad] = useState(false);
   const [changeWho, setChangeWho] = useState(false);
+  const [starting, setStarting] = useState<Product | null>(null);
+  const [ending, setEnding] = useState<{ then?: Product } | null>(null);
+  const [reporting, setReporting] = useState(false);
   const [palletPause, setPalletPause] = useState(false);
   const lastPallet = useRef(0);
   const [now, setNow] = useState(Date.now());
@@ -79,15 +85,15 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
   const shownCustomers = customers.filter((c) => !c.hidden);
   const byCustomer = shownCustomers.length > 0;
   const groups = byCustomer ? groupByCustomer(products, customers, filter) : [{ products: sortProducts(products) }];
-  const customerNames = (p: Product) => (p.customerIds ?? []).map((id) => customers.find((c) => c.id === id)?.name).filter(Boolean).join(', ');
-  const product = products.find((p) => p.id === productId);
+  const product = run ? products.find((p) => p.id === run.productId) : undefined;
   const perProduct = byProduct(mine);
   const sessionTotal = total(mine);
   const dayTotal = total(todays);
   const last = [...mine].sort((a, b) => b.at - a.at);
+  const open = run ? canPack(run, now) : false;
 
   const register = async (kind: EntryKind, quantity: number) => {
-    if (!product || quantity <= 0) return;
+    if (!run || !product || quantity <= 0 || !canPack(run, Date.now())) return;
     // Pallets are counted one by one: a second tap straight after is taken as a slip, not a pallet.
     if (kind === 'pallet') {
       if (Date.now() - lastPallet.current < PALLET_PAUSE_MS) return;
@@ -95,7 +101,7 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
       setPalletPause(true);
       setTimeout(() => setPalletPause(false), PALLET_PAUSE_MS);
     }
-    const e: Entry = { id: newId(), at: Date.now(), day: todayLocal(), kind, quantity, productId: product.id, sessionId, workerIds, station: settings.station };
+    const e: Entry = { id: newId(), at: Date.now(), day: todayLocal(), kind, quantity, productId: product.id, sessionId, workerIds, station: settings.station, runId: run.id };
     await db.entries.put(e);
     navigator.vibrate?.(kind === 'pallet' ? 80 : 40);
     setNow(Date.now());
@@ -105,6 +111,12 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
     if (!confirm(t('pack.endConfirm'))) return;
     await db.sessions.update(sessionId, { endedAt: Date.now() });
     save({ sessionId: undefined });
+  };
+  // Tapping a product: start a run with it – after the run on the line is finished.
+  const pick = (p: Product) => {
+    if (run?.productId === p.id) return;
+    if (run) setEnding({ then: p });
+    else setStarting(p);
   };
 
   return (
@@ -124,6 +136,49 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
         </span>
       </section>
 
+      {run && product ? (
+        <section className="card cal-focus pack-register">
+          <RunHead run={run} product={product} entries={runEntries} now={now} />
+          {open ? (
+            <>
+              <button type="button" className={`pack-big pack-pallet ${palletPause ? 'pack-pausing' : ''}`} aria-disabled={palletPause} onClick={() => void register('pallet', 1)}>
+                <span className="pack-plus">{palletPause ? '✓' : '+1'}</span>
+                {palletPause ? t('pack.palletDone') : t('pack.pallet')}
+              </button>
+              <div className="pack-box-buttons" role="group" aria-label={t('pack.boxesWord')}>
+                {BOX_STEPS.map((n) => (
+                  <button key={n} type="button" className="pack-big pack-box" onClick={() => void register('box', n)}>
+                    <span className="pack-plus">+{n}</span>
+                    {t(n === 1 ? 'pack.box' : 'pack.boxes')}
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="button pack-other-boxes" onClick={() => setBoxPad(true)}>
+                {t('pack.otherBoxes')}
+              </button>
+            </>
+          ) : (
+            <DetectorTestCard run={run} product={product} workerIds={workerIds} now={now} />
+          )}
+          <div className="pack-run-buttons">
+            <button type="button" className="button" onClick={() => setReporting(true)}>
+              {t('run.deviation')}
+            </button>
+            <button type="button" className="button button-primary" onClick={() => setEnding({})}>
+              {t('run.end')}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="card cal-focus">
+          <strong className="pack-product-name">{t('run.pickProduct')}</strong>
+          <p className="small muted">{t('run.pickProductHint')}</p>
+        </section>
+      )}
+
+      {last[0] && <LastEntry entry={last[0]} product={products.find((p) => p.id === last[0].productId)} now={now} onUndo={undo} />}
+
+      <h2 className="pack-question">{run ? t('run.changeProduct') : t('run.which')}</h2>
       {byCustomer && (
         <div className="cal-chips pack-brands" role="group" aria-label={t('pack.customer')}>
           <button type="button" className={`cal-chip ${!filter ? 'pack-chip-on' : ''}`} onClick={() => setFilter(undefined)}>
@@ -136,41 +191,16 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
           ))}
         </div>
       )}
-
       {groups.map((g, i) => (
         <div key={g.customer?.id ?? `none-${i}`}>
-          {byCustomer && <h2 className="pack-group">{g.customer?.name ?? t('pack.noCustomer')}</h2>}
+          {byCustomer && <h3 className="pack-group">{g.customer?.name ?? t('pack.noCustomer')}</h3>}
           <div className="pack-products">
             {g.products.map((p) => (
-              <ProductTile key={p.id} product={p} on={p.id === productId} count={perProduct.get(p.id)} onPick={() => setProductId(p.id)} />
+              <ProductTile key={p.id} product={p} on={p.id === run?.productId} count={perProduct.get(p.id)} onPick={() => pick(p)} />
             ))}
           </div>
         </div>
       ))}
-
-      <section className={`card cal-focus pack-register ${product ? '' : 'pack-register-off'}`}>
-        <div className="cal-focus-head">
-          <strong className="pack-product-name">{product ? product.name : t('pack.pickProduct')}</strong>
-          {product && <span className="small muted">{[product.code, customerNames(product)].filter(Boolean).join(' · ')}</span>}
-        </div>
-        <button type="button" className={`pack-big pack-pallet ${palletPause ? 'pack-pausing' : ''}`} disabled={!product} aria-disabled={palletPause} onClick={() => void register('pallet', 1)}>
-          <span className="pack-plus">{palletPause ? '✓' : '+1'}</span>
-          {palletPause ? t('pack.palletDone') : t('pack.pallet')}
-        </button>
-        <div className="pack-box-buttons" role="group" aria-label={t('pack.boxesWord')}>
-          {BOX_STEPS.map((n) => (
-            <button key={n} type="button" className="pack-big pack-box" disabled={!product} onClick={() => void register('box', n)}>
-              <span className="pack-plus">+{n}</span>
-              {t(n === 1 ? 'pack.box' : 'pack.boxes')}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="button pack-other-boxes" disabled={!product} onClick={() => setBoxPad(true)}>
-          {t('pack.otherBoxes')}
-        </button>
-      </section>
-
-      {last[0] && <LastEntry entry={last[0]} product={products.find((p) => p.id === last[0].productId)} now={now} onUndo={undo} />}
 
       <section className="card">
         <div className="cal-numbers">
@@ -184,6 +214,9 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
           </div>
         </div>
         <p className="small muted">{t('pack.todayLine', { pallets: dayTotal.pallets, boxes: dayTotal.boxes, station: settings.station })}</p>
+        <a className="button" href={href({ name: 'protocol' })}>
+          {t('protocol.open')}
+        </a>
       </section>
 
       {last.length > 1 && (
@@ -199,7 +232,221 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
 
       {boxPad && product && <QuantityPad kind="box" product={product} onClose={() => setBoxPad(false)} onDone={(n) => void register('box', n).then(() => setBoxPad(false))} />}
       {changeWho && <ChangeWho sessionId={sessionId} workerIds={workerIds} onClose={() => setChangeWho(false)} />}
+      {starting && <StartRun product={starting} onClose={() => setStarting(null)} />}
+      {ending && run && product && (
+        <EndRun
+          run={run}
+          product={product}
+          entries={runEntries}
+          workerIds={workerIds}
+          onClose={() => setEnding(null)}
+          onEnded={() => {
+            const next = ending.then;
+            setEnding(null);
+            if (next) setStarting(next);
+          }}
+        />
+      )}
+      {reporting && run && <PackDeviation run={run} workerIds={workerIds} onClose={() => setReporting(false)} />}
     </>
+  );
+}
+
+const clock = (at: number) => new Date(at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+
+/** The run on the line: product, customer, box numbers so far, and when the detector is next tested. */
+function RunHead({ run, product, entries, now }: { run: Run; product: Product; entries: Entry[]; now: number }) {
+  const { t } = useApp();
+  const { customers } = useCatalog();
+  const c = runCount(run, entries, product);
+  const state = testState(run, now);
+  const range = batchRange(c.totalBoxes);
+  return (
+    <>
+      <div className="cal-focus-head">
+        <strong className="pack-product-name">{product.name}</strong>
+        <span className="small muted">{[product.code, customers.find((x) => x.id === run.customerId)?.name].filter(Boolean).join(' · ')}</span>
+      </div>
+      <div className="cal-chips">
+        <span className="cal-chip">{t('run.since', { time: clock(run.startedAt) })}</span>
+        <span className="cal-chip">{t('run.count', { pallets: c.pallets, boxes: c.boxes })}</span>
+        <span className={`cal-chip ${range ? '' : 'cal-chip-warn'}`}>{range ? t('run.batch', { range }) : t('run.noBoxesPerPallet')}</span>
+        {state.kind === 'ok' && <span className={`cal-chip ${state.soon ? 'cal-chip-warn' : 'cal-chip-ok'}`}>{t(state.soon ? 'run.testSoon' : 'run.testOk', { time: clock(state.dueAt) })}</span>}
+      </div>
+    </>
+  );
+}
+
+/** The metal detector test: each test piece run through, found (passed) or not. Packing waits for it. */
+function DetectorTestCard({ run, product, workerIds, now }: { run: Run; product: Product; workerIds: string[]; now: number }) {
+  const { t } = useApp();
+  const state = testState(run, now);
+  const [result, setResult] = useState<Partial<Record<TestPiece, boolean>>>({});
+  const done = TEST_PIECES.every((k) => result[k] !== undefined);
+  const lastPassed = [...run.tests].reverse().find(testPassed);
+  const saveIt = async () => {
+    if (!done) return;
+    const test: DetectorTest = { at: Date.now(), workerIds, ferro: !!result.ferro, nonFerro: !!result.nonFerro, stainless: !!result.stainless };
+    if (!testPassed(test)) {
+      if (!confirm(t('test.failConfirm'))) return;
+      await db.deviations.put({
+        id: newId(),
+        day: todayLocal(),
+        productId: product.id,
+        kind: 'detector',
+        note: t('test.failNote', { pieces: TEST_PIECES.filter((k) => !result[k]).map((k) => t(`test.${k}`)).join(', ') }),
+        at: test.at,
+        runId: run.id,
+        workerIds,
+      });
+    }
+    await db.runs.update(run.id, { tests: [...run.tests, test] });
+    setResult({});
+  };
+  return (
+    <div className={`test-card ${state.kind === 'failed' ? 'test-failed' : ''}`}>
+      <strong className="test-title">
+        {state.kind === 'needed' ? t('test.needed') : state.kind === 'overdue' ? t('test.overdue') : t('test.failedTitle')}
+      </strong>
+      {state.kind === 'failed' && (
+        <p className="test-stop">{t('test.stop', { time: lastPassed ? clock(lastPassed.at) : t('test.runStart') })}</p>
+      )}
+      <p className="small muted">{t('test.hint')}</p>
+      {TEST_PIECES.map((k) => (
+        <div key={k} className="test-row">
+          <strong>{t(`test.${k}`)}</strong>
+          <span className="test-choices">
+            <button type="button" className={`test-choice ${result[k] === true ? 'on-ok' : ''}`} aria-pressed={result[k] === true} onClick={() => setResult({ ...result, [k]: true })}>
+              ✓ {t('test.pass')}
+            </button>
+            <button type="button" className={`test-choice ${result[k] === false ? 'on-bad' : ''}`} aria-pressed={result[k] === false} onClick={() => setResult({ ...result, [k]: false })}>
+              ✗ {t('test.fail')}
+            </button>
+          </span>
+        </div>
+      ))}
+      <button type="button" className="button button-primary pack-start" disabled={!done} onClick={() => void saveIt()}>
+        {t('test.save')}
+      </button>
+    </div>
+  );
+}
+
+type TestPiece = 'ferro' | 'nonFerro' | 'stainless';
+const TEST_PIECES: TestPiece[] = ['ferro', 'nonFerro', 'stainless'];
+
+/** Start a run: the product (and its customer, if it has more than one). */
+function StartRun({ product, onClose }: { product: Product; onClose: () => void }) {
+  const { t, settings, save } = useApp();
+  const { customers } = useCatalog();
+  const own = customers.filter((c) => product.customerIds?.includes(c.id));
+  const [chosen, setChosen] = useState('');
+  // One customer: it is that one (worked out on each render: the customer list may load after the dialog opens).
+  const customerId = chosen || (own.length === 1 ? own[0].id : '') || product.customerIds?.[0] || '';
+  const setCustomerId = setChosen;
+  const start = async () => {
+    const id = newId();
+    await db.runs.put({ id, day: todayLocal(), station: settings.station, productId: product.id, customerId: customerId || undefined, startedAt: Date.now(), tests: [] });
+    save({ runId: id });
+    onClose();
+  };
+  return (
+    <Modal title={t('run.startTitle')} onClose={onClose}>
+      <p className="pack-pad-show">
+        <strong>{product.name}</strong> {product.code && <span className="muted">· {product.code}</span>}
+      </p>
+      {own.length > 1 && (
+        <div className="field">
+          <span className="field-label">{t('run.forCustomer')}</span>
+          <div className="pack-names">
+            {own.map((c) => (
+              <button key={c.id} type="button" className={`pack-name ${customerId === c.id ? 'on' : ''}`} aria-pressed={customerId === c.id} onClick={() => setCustomerId(c.id)}>
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {!product.boxesPerPallet && <Notice kind="warn">{t('run.noBoxesPerPalletLong')}</Notice>}
+      <p className="small muted">{t('run.startHint')}</p>
+      <button type="button" className="button button-primary pack-start" disabled={own.length > 1 && !chosen} onClick={() => void start()}>
+        {t('run.start', { product: product.name })}
+      </button>
+    </Modal>
+  );
+}
+
+/** Finish a run: all boxes labelled (checked last), the machine cleaned before the next product. */
+function EndRun({ run, product, entries, workerIds, onClose, onEnded }: { run: Run; product: Product; entries: Entry[]; workerIds: string[]; onClose: () => void; onEnded: () => void }) {
+  const { t, save } = useApp();
+  const [labels, setLabels] = useState(false);
+  const [cleaned, setCleaned] = useState(false);
+  const c = runCount(run, entries, product);
+  const nothing = !c.pallets && !c.boxes && !run.tests.length;
+  const finish = async () => {
+    const at = Date.now();
+    await db.runs.update(run.id, { endedAt: at, labels: { at, workerIds }, cleaned: { at, workerIds } });
+    save({ runId: undefined });
+    onEnded();
+  };
+  const cancel = async () => {
+    await db.runs.update(run.id, { endedAt: Date.now(), cancelled: true });
+    save({ runId: undefined });
+    onEnded();
+  };
+  return (
+    <Modal title={t('run.endTitle', { product: product.name })} onClose={onClose}>
+      <p className="pack-pad-show">
+        <strong>{t('run.count', { pallets: c.pallets, boxes: c.boxes })}</strong>
+        {batchRange(c.totalBoxes) && <span className="muted"> · {t('run.batch', { range: batchRange(c.totalBoxes)! })}</span>}
+      </p>
+      <label className="check-row big-check">
+        <input type="checkbox" checked={labels} onChange={(e) => setLabels(e.target.checked)} />
+        <span>
+          <strong>{t('run.labels')}</strong>
+          <br />
+          <span className="small muted">{t('run.labelsHint')}</span>
+        </span>
+      </label>
+      <label className="check-row big-check">
+        <input type="checkbox" checked={cleaned} onChange={(e) => setCleaned(e.target.checked)} />
+        <span>
+          <strong>{t('run.cleaned')}</strong>
+          <br />
+          <span className="small muted">{t('run.cleanedHint')}</span>
+        </span>
+      </label>
+      <button type="button" className="button button-primary pack-start" disabled={!labels || !cleaned} onClick={() => void finish()}>
+        {t('run.endButton')}
+      </button>
+      {nothing && (
+        <button type="button" className="link-button" onClick={() => void cancel()}>
+          {t('run.cancel')}
+        </button>
+      )}
+    </Modal>
+  );
+}
+
+/** Something to note at the packing: tied to the run (the product being packed) and the time. */
+function PackDeviation({ run, workerIds, onClose }: { run: Run; workerIds: string[]; onClose: () => void }) {
+  const { t } = useApp();
+  const [note, setNote] = useState('');
+  const saveIt = async () => {
+    if (!note.trim()) return;
+    await db.deviations.put({ id: newId(), day: todayLocal(), productId: run.productId, kind: 'packing', note: note.trim(), at: Date.now(), runId: run.id, workerIds });
+    onClose();
+  };
+  return (
+    <Modal title={t('run.deviation')} onClose={onClose}>
+      <p className="small muted">{t('run.deviationHint')}</p>
+      <Field label={t('prod.note')}>
+        <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+      </Field>
+      <button type="button" className="button button-primary pack-start" disabled={!note.trim()} onClick={() => void saveIt()}>
+        {t('admin.save')}
+      </button>
+    </Modal>
   );
 }
 

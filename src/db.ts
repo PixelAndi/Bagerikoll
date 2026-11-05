@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Brand, Customer, Deviation, DoughCount, Entry, Order, Product, Session, StockCount, Worker } from './domain/types.ts';
+import type { Brand, Customer, Deviation, DoughCount, Entry, Order, Product, Run, Session, StockCount, Worker } from './domain/types.ts';
 
 // Everything is kept on this device (IndexedDB). Nothing is ever deleted from the
 // production log: a mistake is voided, with who and when, so the log stays whole.
@@ -20,6 +20,7 @@ class BagerikollDB extends Dexie {
   doughs!: Table<DoughCount, string>;
   deviations!: Table<Deviation, string>;
   stockCounts!: Table<StockCount, string>;
+  runs!: Table<Run, string>;
   meta!: Table<KeyValue, string>;
 
   constructor() {
@@ -39,13 +40,17 @@ class BagerikollDB extends Dexie {
       deviations: 'id, day, productId',
       stockCounts: 'id, at, productId',
     });
+    this.version(3).stores({
+      entries: 'id, at, day, productId, sessionId, runId',
+      runs: 'id, day, startedAt',
+    });
   }
 }
 
 export const db = new BagerikollDB();
 
 /** The tables a data file carries (not `meta`, and never this device's settings or PIN). */
-export const DATA_TABLES = ['workers', 'brands', 'customers', 'products', 'sessions', 'entries', 'orders', 'doughs', 'deviations', 'stockCounts'] as const;
+export const DATA_TABLES = ['workers', 'brands', 'customers', 'products', 'sessions', 'entries', 'orders', 'doughs', 'deviations', 'stockCounts', 'runs'] as const;
 export type DataTable = (typeof DATA_TABLES)[number];
 
 // Each write stamps the record with when it changed, so merging a data file from another device

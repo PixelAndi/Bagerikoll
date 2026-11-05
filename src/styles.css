@@ -1567,3 +1567,58 @@ input[type='checkbox'] {
 .dev-kinds .pack-name .small { font-weight: 400; }
 .warn-text { color: var(--cal-missing-strong); font-weight: 600; }
 .ok { color: var(--cal-worked-strong); font-weight: 600; }
+
+/* Runs at the packing station: the detector test and the end checks. */
+.pack-run-buttons { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.pack-run-buttons .button { flex: 1; min-height: 56px; font-size: 1.05rem; }
+.test-card { border: 3px solid var(--cal-missing-strong); background: var(--cal-missing); border-radius: 14px; padding: 14px; margin-top: 10px; }
+.test-card.test-failed { border-color: var(--error); background: var(--error-soft); }
+.test-title { display: block; font-size: 1.3rem; margin-bottom: 6px; }
+.test-stop { font-weight: 700; color: var(--error); }
+.test-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; flex-wrap: wrap; }
+.test-row > strong { font-size: 1.15rem; }
+.test-choices { display: flex; gap: 12px; }
+.test-choice {
+  min-width: 130px;
+  min-height: 64px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.test-choice.on-ok { border-color: var(--cal-worked-strong); background: var(--cal-worked); }
+.test-choice.on-bad { border-color: var(--error); background: var(--error-soft); }
+.big-check { padding: 12px; border: 2px solid var(--border); border-radius: 12px; }
+.big-check input { width: 30px; height: 30px; }
+
+/* The packing protocol: the paper form as a table; printed on A4 landscape. */
+.proto-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.proto-scroll { overflow-x: auto; margin-bottom: 16px; }
+.proto-table { border-collapse: collapse; width: 100%; min-width: 900px; font-size: 0.85rem; background: var(--surface); }
+.proto-table th,
+.proto-table td { border: 1px solid var(--border); padding: 5px 6px; text-align: left; vertical-align: top; }
+.proto-table th { font-size: 0.75rem; background: var(--surface-2); }
+.proto-tests span { display: block; white-space: nowrap; }
+.proto-ok { color: var(--cal-worked-strong); }
+.proto-bad { color: var(--error); font-weight: 700; }
+.proto-open { color: var(--cal-missing-strong); font-weight: 700; }
+.proto-cancelled { opacity: 0.55; }
+
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { background: #fff; color: #000; }
+  .app-header,
+  .tabbar,
+  .no-print,
+  .page-header { display: none !important; }
+  .app { max-width: none; padding: 0; }
+  .proto-scroll { overflow: visible; }
+  .proto-table { min-width: 0; font-size: 8.5pt; background: #fff; }
+  .proto-table th { background: #eee; }
+  .proto-ok { color: #000; }
+}

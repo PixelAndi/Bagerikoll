@@ -475,9 +475,12 @@ function Doughs({ day, input, products, onDeviation, dayName }: { day: LocalDate
                     </>
                   )}
                 </span>
-                <button type="button" className="link-button small" onClick={() => confirm(t('prod.removeDeviationConfirm')) && void db.deviations.update(x.id, { removed: true })}>
-                  {t('prod.removeDeviation')}
-                </button>
+                {/* Deviations from the packing station are part of its protocol: they stay. */}
+                {!x.runId && (
+                  <button type="button" className="link-button small" onClick={() => confirm(t('prod.removeDeviationConfirm')) && void db.deviations.update(x.id, { removed: true })}>
+                    {t('prod.removeDeviation')}
+                  </button>
+                )}
               </li>
             ))}
           </ul>

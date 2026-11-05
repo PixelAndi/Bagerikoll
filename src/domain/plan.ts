@@ -105,7 +105,7 @@ export function yieldDays(product: Product, before: LocalDate, doughs: DoughCoun
       noPacking.push(d.day);
       continue;
     }
-    days.push({ day: d.day, doughs: d.doughs, scrapped, packed, perDough: packed / good, deviation: devs.some((x) => x.kind !== 'scrapped') });
+    days.push({ day: d.day, doughs: d.doughs, scrapped, packed, perDough: packed / good, deviation: devs.some((x) => x.kind === 'lowYield' || x.kind === 'other') });
   }
   days.sort((a, b) => (a.day < b.day ? 1 : -1));
   return { days, noPacking: noPacking.sort() };

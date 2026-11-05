@@ -70,6 +70,8 @@ export interface Entry {
   sessionId: string;
   workerIds: string[];
   station: string;
+  /** The run (one product at a time on the line) it was packed in. */
+  runId?: string;
   /** Undone: kept in the log, left out of every total. */
   voided?: { at: number; by: 'worker' | 'admin'; reason: string };
   updatedAt?: number;
@@ -113,10 +115,13 @@ export interface DoughCount {
  * Something that went wrong with a day's doughs:
  * - scrapped: doughs thrown away (e.g. an ingredient missing), often made again early the next day;
  * - lowYield: fewer pallets than usual with no known cause (bread baked together etc.);
- * - other.
- * A day with a deviation is left out of the product's usual yield, so it doesn't skew it.
+ * - other;
+ * and from the packing station, tied to the run (the product being packed) and the time:
+ * - detector: a metal detector test piece not found;
+ * - packing: anything else noted at the packing.
+ * A day with a low-yield or other deviation is left out of the product's usual yield.
  */
-export type DeviationKind = 'scrapped' | 'lowYield' | 'other';
+export type DeviationKind = 'scrapped' | 'lowYield' | 'other' | 'detector' | 'packing';
 
 export interface Deviation {
   id: string;
@@ -129,6 +134,10 @@ export interface Deviation {
   remadeOn?: LocalDate;
   note: string;
   at: number;
+  /** The run it happened in (packing station deviations). */
+  runId?: string;
+  /** Who reported it. */
+  workerIds?: string[];
   /** Taken back (a mistake): kept, counted nowhere. */
   removed?: boolean;
   updatedAt?: number;
@@ -141,5 +150,49 @@ export interface StockCount {
   productId: string;
   pallets: number;
   boxes: number;
+  updatedAt?: number;
+}
+
+// The packing protocol: what the paper form held, one row per run.
+
+/** A metal detector test: each test piece passed (found and rejected) or not. */
+export interface DetectorTest {
+  at: number;
+  workerIds: string[];
+  /** Ferro 3.5 mm. */
+  ferro: boolean;
+  /** Non-ferro 4.5 mm. */
+  nonFerro: boolean;
+  /** Stainless steel 4.0 mm. */
+  stainless: boolean;
+}
+
+/** A tick on the protocol: when, and who ticked it. */
+export interface Tick {
+  at: number;
+  workerIds: string[];
+}
+
+/**
+ * A run: one product packed on the line, from the product change to the next. Its boxes are
+ * numbered from 01 up; the detector is tested at the start and every two hours; at the end every
+ * box is checked to have its label and the machine is cleaned before the next product.
+ */
+export interface Run {
+  id: string;
+  day: LocalDate;
+  station: string;
+  productId: string;
+  /** Who it is packed for (the product's customer, or the one chosen if it has several). */
+  customerId?: string;
+  startedAt: number;
+  endedAt?: number;
+  tests: DetectorTest[];
+  /** "Alla kartonger har etikett" – checked last. */
+  labels?: Tick;
+  /** "Städat maskin efter brödbyte" – after the product, before the next is started. */
+  cleaned?: Tick;
+  /** Started by mistake (nothing packed): kept, shown as such. */
+  cancelled?: boolean;
   updatedAt?: number;
 }

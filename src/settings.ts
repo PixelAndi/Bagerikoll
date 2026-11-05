@@ -17,6 +17,8 @@ export interface Settings {
   pinLength?: number;
   /** A manager's own phone: Produktion opens without the PIN on this device (never on a locked station). */
   productionOpen?: boolean;
+  /** The run (product on the line) open at this station. */
+  runId?: string;
   /** The session running at this station. */
   sessionId?: string;
 }

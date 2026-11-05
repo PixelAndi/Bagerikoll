@@ -14,6 +14,16 @@ packers, station and time, filters and CSV export. Products are grouped under th
 customer at the station; "Byt packare" changes who is packing (anyone, no PIN; creating names
 is Admin's). Pallet +1 only (rests 1.5 s against double taps), boxes +1/+5/+10.
 
+**Runs + the packing protocol (built; replaces the paper form – a food-safety record, the owner
+wants it compliant):** `domain/runs.ts` (+ tests), `PackView.tsx`, `ProtocolView.tsx`. A run =
+one product from change to change. Metal detector test (Ferro 3.5 / Non-Ferro 4.5 / Rostfri 4.0)
+at every product change and every 2 h – packing is blocked until it passes; a failed test stops
+packing and saves a `detector` deviation. Ending a run requires "Alla kartonger har etikett"
+(checked last) and "Städat maskin efter brödbyte" (after the product, before the next). BatchNr
+= box numbers 01–(pallets × boxes per pallet + extra boxes), per run. Signature = the session's
+packers (owner confirmed that is compliant). Station deviations (`packing`, `detector`) carry the
+run, time and workers and can't be removed. Never weaken these rules without the owner.
+
 **Phase 2 (built): Produktion** (`ui/ProductionView.tsx`, `domain/plan.ts` + tests), for the
 managers on their phones: orders from the paper list (pallets by default, boxes possible),
 doughs per product per day, deviations (scrapped / low yield / other), stock (count ± packed

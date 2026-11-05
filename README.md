@@ -25,6 +25,36 @@ important numbers big, how things stand in coloured squares and chips, details f
 - **Workstation lock.** Admin can lock a device to the packing station: no tabs, no log, no
   settings – unlocking takes the PIN. Unlocked, the device has the full app (Packa, Idag, Admin, Mer).
 
+## Runs and the packing protocol (replaces the paper form)
+
+The paper form at the packing line is a food-safety record; the app now fills it in. Each row
+is a **run**: one product on the line, from one product change to the next.
+
+- **Starting a run.** Tapping a product starts a run (the customer is the product's, or chosen
+  if it has several). Nothing can be packed until the **metal detector test** has passed:
+  Ferro 3.5, Non-Ferro 4.5 and Stainless 4.0, each passed or failed.
+- **Every two hours** the test is due again: 15 minutes before, the station says so; when it
+  is due, the pallet and box buttons give way to the test. A **failed** test stops packing,
+  saves a deviation (tied to the run, time and packers) and tells the packers to stop and
+  contact the person in charge; packing goes on when a new test passes.
+- **Box numbers (BatchNr 01–X)** are worked out: pallets × boxes per pallet + extra boxes
+  (boxes per pallet is set per product in Admin; without it the row says so).
+- **Finishing a run** (or tapping another product) asks for the last two ticks: **Alla
+  kartonger har etikett** (checked last) and **Städat maskin efter brödbyte** (before the next
+  product). A run started by mistake, with nothing packed, can be cancelled (kept, marked).
+- **Avvikelse** at the station: a note tied to the run, the time and who is packing.
+- **Signature** = the packers chosen at the station (everyone who packed in or ticked the run).
+- **Packningsprotokoll** (`#/protocol`, from Logg and from the station – also on a locked
+  station): the day's runs as the paper form's columns – time, product, BatchNr, pallets and
+  extra boxes, customer, each detector test with its time (✓/✗), labels, cleaned, signature –
+  and the day's packing deviations. **Print / save as PDF** gives A4 landscape.
+
+Records are never deleted: undone entries are voided and stay; a run's checks can't be edited
+afterwards; deviations from the station can't be removed in Produktion. Until there is a
+server, everything lives on the tablet: print or save the protocol as PDF every day and save a
+data file. Whether this satisfies the bakery's certification is for its quality lead or auditor
+to confirm; keep the paper form alongside until they have.
+
 ## Produktion (managers, phone-first)
 
 Behind the PIN, or always open on a phone Admin marks as a manager's phone (never on a locked
