@@ -13,9 +13,9 @@ are deliberately not in this public repository.
 - **Workstation locking:** a device can be locked to one simplified view. Today
   that is the packing station on a floor tablet. Unlocked, a phone or desktop
   gets the full app.
-- **Two brands:** the bakery makes products under its main brand and under a
-  second brand for a specific product line. Everything that lists products must
-  sort and filter by brand.
+- **Customers first:** everything that lists products groups and filters them by
+  customer (who orders them). The bakery also has two brands, but only accounting
+  needs them: brand is a product field in Admin and a column in the CSV export.
 - **The look:** the same as the owner's other app, Lönekoll
   (`PixelAndi/lonekoll`), with its core idea of being **easy to read at a
   glance**:

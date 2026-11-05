@@ -50,7 +50,7 @@ function Production() {
   const lang = settings.language;
   const dayName = (d: LocalDate, style: 'long' | 'short' = 'long') =>
     new Intl.DateTimeFormat(lang, { weekday: style, day: 'numeric', month: style === 'long' ? 'long' : 'numeric', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`));
-  const products = useMemo(() => sortProducts(catalog.products, catalog.brands), [catalog.products, catalog.brands]);
+  const products = useMemo(() => sortProducts(catalog.products), [catalog.products]);
   if (!data) return <Page title={t('prod.title')}>{null}</Page>;
   const input: PlanInput = { products, ...data, today };
   const dayOrders = data.orders.filter((o) => o.day === day).sort((a, b) => a.createdAt - b.createdAt);
@@ -303,7 +303,7 @@ function Stepper({ value, onChange, label }: { value: number; onChange: (n: numb
 /** A new or changed order: the customer, then pallets (and if need be boxes) per product. */
 function OrderEditor({ order, day, onClose }: { order?: Order; day: LocalDate; onClose: () => void }) {
   const { t } = useApp();
-  const { customers, products, brands } = useCatalog();
+  const { customers, products } = useCatalog();
   const [customerId, setCustomerId] = useState(order?.customerId ?? '');
   const [orderDay, setOrderDay] = useState(order?.day ?? day);
   const [lines, setLines] = useState<OrderLine[]>(order?.lines ?? []);
@@ -311,7 +311,7 @@ function OrderEditor({ order, day, onClose }: { order?: Order; day: LocalDate; o
   const [all, setAll] = useState(false);
   const [boxesFor, setBoxesFor] = useState<string[]>(order?.lines.filter((l) => l.boxes).map((l) => l.productId) ?? []);
   const shownCustomers = customers.filter((c) => !c.hidden || c.id === customerId);
-  const sorted = sortProducts(products, brands);
+  const sorted = sortProducts(products);
   const list = all || !customerId ? sorted : sorted.filter((p) => p.customerIds?.includes(customerId) || lines.some((l) => l.productId === p.id));
   const line = (id: string) => lines.find((l) => l.productId === id) ?? { productId: id, pallets: 0, boxes: 0 };
   const setLine = (id: string, patch: Partial<OrderLine>) => setLines((ls) => [...ls.filter((l) => l.productId !== id), { ...line(id), ...patch }]);

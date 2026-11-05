@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useApp } from '../app-context.ts';
 import { useCatalog, useEntriesBetween } from '../data.ts';
 import { addDays, isoWeekday, todayLocal } from '../days.ts';
-import { byBrand, byDay, byProduct, sortProducts, total } from '../domain/production.ts';
+import { byCustomer, byDay, byProduct, groupByCustomer, total } from '../domain/production.ts';
 import { Page } from './common.tsx';
 import { ByWorker } from './ProductionLog.tsx';
 
-// Idag: what has been packed, readable at a glance – the day's pallets and boxes big, each brand
-// as a chip, the week as squares (darker = more pallets), and each brand's products below.
+// Idag: what has been packed, readable at a glance – the day's pallets and boxes big, each customer
+// as a chip, the week as squares (darker = more pallets), and each customer's products below.
 // Who packed what is shown below, and every entry in Logg.
 
 export function TodayView() {
@@ -16,10 +16,11 @@ export function TodayView() {
   const [day, setDay] = useState(today);
   const monday = addDays(day, 1 - isoWeekday(day));
   const week = useEntriesBetween(monday, addDays(monday, 6));
-  const { brands, products } = useCatalog();
+  const { customers, products } = useCatalog();
   const entries = week.filter((e) => e.day === day);
   const sum = total(entries);
-  const perBrand = byBrand(entries, products);
+  const perCustomer = byCustomer(entries, products);
+  const shownCustomers = customers.filter((c) => !c.hidden || perCustomer.has(c.id));
   const perProduct = byProduct(entries);
   const perDay = byDay(week);
   const most = Math.max(1, ...[...perDay.values()].map((c) => c.pallets));
@@ -54,13 +55,13 @@ export function TodayView() {
             <span className="small muted">{t('today.boxes')}</span>
           </div>
         </div>
-        {brands.length > 0 && (
+        {shownCustomers.length > 0 && (
           <div className="cal-chips">
-            {brands.map((b) => {
-              const c = perBrand.get(b.id);
+            {shownCustomers.map((k) => {
+              const c = perCustomer.get(k.id);
               return (
-                <span key={b.id} className="cal-chip" style={{ ['--brand' as string]: b.color }}>
-                  <i className="brand-dot" /> {b.name}: {t('today.chipCount', { pallets: c?.pallets ?? 0, boxes: c?.boxes ?? 0 })}
+                <span key={k.id} className={`cal-chip ${c ? 'cal-chip-ok' : ''}`}>
+                  {k.name}: {t('today.chipCount', { pallets: c?.pallets ?? 0, boxes: c?.boxes ?? 0 })}
                 </span>
               );
             })}
@@ -91,22 +92,25 @@ export function TodayView() {
 
       {entries.length === 0 && <p className="muted">{t('today.nothing')}</p>}
       {entries.length > 0 && <ByWorker day={day} />}
-      {brands.map((b) => {
-        const list = sortProducts(products, brands, b.id).filter((p) => perProduct.has(p.id));
-        const hiddenDone = products.filter((p) => p.hidden && p.brandId === b.id && perProduct.has(p.id));
-        const all = [...list, ...hiddenDone];
-        if (!all.length) return null;
+      {groupByCustomer(
+        // Counted once, under its first customer (as the chips are), and shown even if hidden since.
+        products.map((p) => ({ ...p, customerIds: p.customerIds?.slice(0, 1), hidden: p.hidden && !perProduct.has(p.id) })),
+        customers.map((c) => (c.hidden && perCustomer.has(c.id) ? { ...c, hidden: false } : c)),
+      ).map((g) => {
+        const done = g.products.filter((p) => perProduct.has(p.id));
+        if (!done.length) return null;
         return (
-          <section key={b.id} className="card brand-card" style={{ ['--brand' as string]: b.color }}>
-            <h2 className="card-title">
-              <i className="brand-dot" /> {b.name}
-            </h2>
+          <section key={g.customer?.id ?? 'none'} className="card">
+            <h2 className="card-title">{g.customer?.name ?? t('pack.noCustomer')}</h2>
             <ul className="product-rows">
-              {all.map((p) => {
+              {done.map((p) => {
                 const c = perProduct.get(p.id)!;
                 return (
                   <li key={p.id}>
-                    <span>{p.name}</span>
+                    <span>
+                      {p.name}
+                      {p.code && <span className="small muted"> · {p.code}</span>}
+                    </span>
                     <span className="product-count">
                       <strong>{c.pallets}</strong> {t('today.palletsShort')} · <strong>{c.boxes}</strong> {t('today.boxesShortWord')}
                     </span>

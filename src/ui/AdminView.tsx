@@ -6,7 +6,8 @@ import { hashPin } from '../domain/pin.ts';
 import type { Product } from '../domain/types.ts';
 import { Card, Field, Fold, Modal, Notice, Page } from './common.tsx';
 
-// Admin (behind the PIN): the managerial controls – names, brands and products, this device's
+// Admin (behind the PIN): the managerial controls – names, customers, products and brands (for
+// accounting), this device's
 // station name and workstation lock, the PIN – and voiding entries in the log. Everything else,
 // including who packed what and when, is open to everyone (the owner's decision).
 
@@ -32,9 +33,9 @@ export function AdminView() {
     >
       <Notice kind="info">{t('admin.intro')}</Notice>
       <Workers />
-      <Brands />
       <Customers />
       <Products />
+      <Brands />
       <Station />
       <ChangePin />
     </Page>
@@ -90,7 +91,6 @@ function Brands() {
       <ul className="edit-rows">
         {brands.map((b) => (
           <li key={b.id}>
-            <input type="color" value={b.color} aria-label={t('admin.color')} onChange={(e) => void db.brands.update(b.id, { color: e.target.value })} />
             <input type="text" defaultValue={b.name} aria-label={t('admin.name')} onBlur={(e) => e.target.value.trim() && void db.brands.update(b.id, { name: e.target.value.trim() })} />
           </li>
         ))}
@@ -146,22 +146,21 @@ function Products() {
   const [customerId, setCustomerId] = useState('');
   const [code, setCode] = useState('');
   const [editing, setEditing] = useState<string>();
-  const brand = brandId || brands[0]?.id || '';
   const add = async () => {
     const n = name.trim();
-    if (!n || !brand) return;
+    if (!n) return;
     const c = code.trim();
     setName('');
     setCode('');
-    await db.products.put({ id: newId(), name: n, brandId: brand, code: c || undefined, customerIds: customerId ? [customerId] : [] });
+    await db.products.put({ id: newId(), name: n, brandId: brandId || undefined, code: c || undefined, customerIds: customerId ? [customerId] : [] });
   };
   const brandName = new Map(brands.map((b) => [b.id, b.name]));
   const customerName = new Map(customers.map((c) => [c.id, c.name]));
-  const sorted = [...products].sort((a, b) => (brandName.get(a.brandId) ?? '').localeCompare(brandName.get(b.brandId) ?? '', 'sv') || a.name.localeCompare(b.name, 'sv'));
+  const firstCustomer = (p: Product) => customerName.get(p.customerIds?.[0] ?? '') ?? '\uffff';
+  const sorted = [...products].sort((a, b) => firstCustomer(a).localeCompare(firstCustomer(b), 'sv') || a.name.localeCompare(b.name, 'sv', { numeric: true }));
   const product = products.find((p) => p.id === editing);
   return (
     <Fold title={t('admin.products')} sub={t('admin.count', { n: products.filter((p) => !p.hidden).length })}>
-      {!brands.length && <Notice kind="warn">{t('admin.brandFirst')}</Notice>}
       <ul className="product-rows">
         {sorted.map((p) => (
           <li key={p.id} className={p.hidden ? 'pack-voided' : ''}>
@@ -170,7 +169,7 @@ function Products() {
               {p.code && <span className="muted"> · {p.code}</span>}
               <br />
               <span className="small muted">
-                {[brandName.get(p.brandId), (p.customerIds ?? []).map((id) => customerName.get(id)).filter(Boolean).join(', ') || t('admin.noCustomer'), p.palletsPerDough ? t('admin.perDoughShort', { n: p.palletsPerDough }) : '', p.boxesPerPallet ? t('admin.perPalletShort', { n: p.boxesPerPallet }) : '']
+                {[(p.customerIds ?? []).map((id) => customerName.get(id)).filter(Boolean).join(', ') || t('admin.noCustomer'), p.brandId ? brandName.get(p.brandId) : '', p.palletsPerDough ? t('admin.perDoughShort', { n: p.palletsPerDough }) : '', p.boxesPerPallet ? t('admin.perPalletShort', { n: p.boxesPerPallet }) : '']
                   .filter(Boolean)
                   .join(' · ')}
               </span>
@@ -181,34 +180,35 @@ function Products() {
           </li>
         ))}
       </ul>
-      {brands.length > 0 && (
-        <div className="add-row">
-          <select value={brand} onChange={(e) => setBrandId(e.target.value)} aria-label={t('pack.brand')}>
+      <div className="add-row">
+        {customers.length > 0 && (
+          <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} aria-label={t('pack.customer')}>
+            <option value="">{t('admin.noCustomer')}</option>
+            {customers
+              .filter((c) => !c.hidden)
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+          </select>
+        )}
+        <input type="text" value={name} placeholder={t('admin.newProduct')} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void add()} />
+        <input type="text" className="code-input" value={code} placeholder={t('admin.code')} onChange={(e) => setCode(e.target.value)} />
+        {brands.length > 0 && (
+          <select value={brandId} onChange={(e) => setBrandId(e.target.value)} aria-label={t('pack.brand')}>
+            <option value="">{t('admin.noBrand')}</option>
             {brands.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
               </option>
             ))}
           </select>
-          {customers.length > 0 && (
-            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} aria-label={t('pack.customer')}>
-              <option value="">{t('admin.noCustomer')}</option>
-              {customers
-                .filter((c) => !c.hidden)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </select>
-          )}
-          <input type="text" value={name} placeholder={t('admin.newProduct')} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void add()} />
-          <input type="text" className="code-input" value={code} placeholder={t('admin.code')} onChange={(e) => setCode(e.target.value)} />
-          <button type="button" className="button button-primary" disabled={!name.trim()} onClick={() => void add()}>
-            {t('admin.add')}
-          </button>
-        </div>
-      )}
+        )}
+        <button type="button" className="button button-primary" disabled={!name.trim()} onClick={() => void add()}>
+          {t('admin.add')}
+        </button>
+      </div>
       {product && <ProductEditor product={product} onClose={() => setEditing(undefined)} />}
     </Fold>
   );
@@ -226,7 +226,7 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
   const toggleCustomer = (id: string) => setP((x) => ({ ...x, customerIds: x.customerIds?.includes(id) ? x.customerIds.filter((c) => c !== id) : [...(x.customerIds ?? []), id] }));
   const saveIt = async () => {
     if (!p.name.trim()) return;
-    await db.products.update(p.id, { name: p.name.trim(), code: p.code?.trim() || undefined, brandId: p.brandId, customerIds: p.customerIds ?? [], boxesPerPallet: p.boxesPerPallet, palletsPerDough: p.palletsPerDough, hidden: p.hidden });
+    await db.products.update(p.id, { name: p.name.trim(), code: p.code?.trim() || undefined, brandId: p.brandId || undefined, customerIds: p.customerIds ?? [], boxesPerPallet: p.boxesPerPallet, palletsPerDough: p.palletsPerDough, hidden: p.hidden });
     onClose();
   };
   return (
@@ -239,7 +239,8 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
           <input type="text" value={p.code ?? ''} onChange={(e) => setP({ ...p, code: e.target.value })} />
         </Field>
         <Field label={t('pack.brand')}>
-          <select value={p.brandId} onChange={(e) => setP({ ...p, brandId: e.target.value })}>
+          <select value={p.brandId ?? ''} onChange={(e) => setP({ ...p, brandId: e.target.value })}>
+            <option value="">{t('admin.noBrand')}</option>
             {brands.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}

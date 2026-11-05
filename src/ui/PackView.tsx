@@ -59,7 +59,7 @@ function StartSession() {
 
 function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: string[] }) {
   const { t, settings, save } = useApp();
-  const { workers, brands, customers, products } = useCatalog();
+  const { workers, customers, products } = useCatalog();
   const today = todayLocal();
   const todays = useEntriesOn(today);
   const mine = useMemo(() => todays.filter((e) => e.sessionId === sessionId), [todays, sessionId]);
@@ -75,10 +75,11 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
     return () => clearInterval(timer);
   }, []);
   const names = workerIds.map((id) => workers.find((w) => w.id === id)?.name ?? '?');
-  // Products under their customers; with no customers set up yet, by brand as before.
-  const byCustomer = customers.some((c) => !c.hidden);
-  const groups = byCustomer ? groupByCustomer(products, customers, brands, filter) : [{ products: sortProducts(products, brands, filter) }];
-  const chips = byCustomer ? customers.filter((c) => !c.hidden).map((c) => ({ id: c.id, name: c.name, color: undefined as string | undefined })) : brands;
+  // Products under the customer they are made for (brand is for accounting only).
+  const shownCustomers = customers.filter((c) => !c.hidden);
+  const byCustomer = shownCustomers.length > 0;
+  const groups = byCustomer ? groupByCustomer(products, customers, filter) : [{ products: sortProducts(products) }];
+  const customerNames = (p: Product) => (p.customerIds ?? []).map((id) => customers.find((c) => c.id === id)?.name).filter(Boolean).join(', ');
   const product = products.find((p) => p.id === productId);
   const perProduct = byProduct(mine);
   const sessionTotal = total(mine);
@@ -123,23 +124,25 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
         </span>
       </section>
 
-      <div className="cal-chips pack-brands" role="group" aria-label={t(byCustomer ? 'pack.customer' : 'pack.brand')}>
-        <button type="button" className={`cal-chip ${!filter ? 'pack-chip-on' : ''}`} onClick={() => setFilter(undefined)}>
-          {t('pack.allBrands')}
-        </button>
-        {chips.map((b) => (
-          <button key={b.id} type="button" className={`cal-chip ${filter === b.id ? 'pack-chip-on' : ''}`} style={b.color ? { ['--brand' as string]: b.color } : undefined} onClick={() => setFilter(b.id)}>
-            {b.color && <i className="brand-dot" />} {b.name}
+      {byCustomer && (
+        <div className="cal-chips pack-brands" role="group" aria-label={t('pack.customer')}>
+          <button type="button" className={`cal-chip ${!filter ? 'pack-chip-on' : ''}`} onClick={() => setFilter(undefined)}>
+            {t('pack.allBrands')}
           </button>
-        ))}
-      </div>
+          {shownCustomers.map((c) => (
+            <button key={c.id} type="button" className={`cal-chip ${filter === c.id ? 'pack-chip-on' : ''}`} onClick={() => setFilter(c.id)}>
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {groups.map((g, i) => (
         <div key={g.customer?.id ?? `none-${i}`}>
           {byCustomer && <h2 className="pack-group">{g.customer?.name ?? t('pack.noCustomer')}</h2>}
           <div className="pack-products">
             {g.products.map((p) => (
-              <ProductTile key={p.id} product={p} color={brands.find((b) => b.id === p.brandId)?.color} on={p.id === productId} count={perProduct.get(p.id)} onPick={() => setProductId(p.id)} />
+              <ProductTile key={p.id} product={p} on={p.id === productId} count={perProduct.get(p.id)} onPick={() => setProductId(p.id)} />
             ))}
           </div>
         </div>
@@ -148,7 +151,7 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
       <section className={`card cal-focus pack-register ${product ? '' : 'pack-register-off'}`}>
         <div className="cal-focus-head">
           <strong className="pack-product-name">{product ? product.name : t('pack.pickProduct')}</strong>
-          {product && <span className="small muted">{[product.code, brands.find((b) => b.id === product.brandId)?.name].filter(Boolean).join(' · ')}</span>}
+          {product && <span className="small muted">{[product.code, customerNames(product)].filter(Boolean).join(' · ')}</span>}
         </div>
         <button type="button" className={`pack-big pack-pallet ${palletPause ? 'pack-pausing' : ''}`} disabled={!product} aria-disabled={palletPause} onClick={() => void register('pallet', 1)}>
           <span className="pack-plus">{palletPause ? '✓' : '+1'}</span>
@@ -234,10 +237,10 @@ function ChangeWho({ sessionId, workerIds, onClose }: { sessionId: string; worke
   );
 }
 
-function ProductTile({ product, color, on, count, onPick }: { product: Product; color?: string; on: boolean; count?: { pallets: number; boxes: number }; onPick: () => void }) {
+function ProductTile({ product, on, count, onPick }: { product: Product; on: boolean; count?: { pallets: number; boxes: number }; onPick: () => void }) {
   const { t } = useApp();
   return (
-    <button type="button" className={`pack-product ${on ? 'on' : ''}`} style={{ ['--brand' as string]: color ?? 'var(--border)' }} aria-pressed={on} onClick={onPick}>
+    <button type="button" className={`pack-product ${on ? 'on' : ''}`} aria-pressed={on} onClick={onPick}>
       <strong>{product.name}</strong>
       {product.code && <span className="small muted">{product.code}</span>}
       <span className="pack-product-count small">{count && (count.pallets || count.boxes) ? t('pack.tileCount', { pallets: count.pallets, boxes: count.boxes }) : ' '}</span>

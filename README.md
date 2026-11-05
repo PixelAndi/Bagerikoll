@@ -10,18 +10,17 @@ important numbers big, how things stand in coloured squares and chips, details f
   several can pack together. Every pallet or box registered is tied to everyone in the session.
 - **Who is packing can change.** "Byt packare" adds or takes off anyone from the running
   session, no PIN; entries from then on are theirs. (Creating or hiding names is Admin's.)
-- **Packing.** Products are grouped under their customer (chips filter by customer; with no
-  customers set up, by brand). **+1 Pall** is the biggest button and rests 1.5 s after a tap, so
+- **Packing.** Products are grouped under their customer, with chips to filter by customer. **+1 Pall** is the biggest button and rests 1.5 s after a tap, so
   a double tap isn't two pallets (pallets are counted one by one). Boxes: **+1 / +5 / +10**,
   and "Fler kartonger …" for another number. What was just registered is shown big.
 - **Undo, never delete.** A worker can undo an entry for two minutes; later only an admin can
   void it, with a reason. Voided entries stay in the log and are left out of every total.
-- **Idag.** Today's pallets and boxes, each brand as a chip, the week as squares (darker =
-  more pallets), who packed what, and each brand's products.
-- **Logg.** Every entry with its packers, station and time, by date range and brand, with
+- **Idag.** Today's pallets and boxes, each customer as a chip, the week as squares (darker =
+  more pallets), who packed what, and each customer's products.
+- **Logg.** Every entry with its packers, station and time, by date range and customer, with
   CSV export (opens in Excel). Open to everyone.
-- **Admin (PIN).** Only what the owner has made admin-only: names, brands (with colours),
-  customers, products (article number, brand, customer(s), pallets per dough, boxes per pallet), this device's station name and lock, the PIN, and voiding
+- **Admin (PIN).** Only what the owner has made admin-only: names, customers, products
+  (article number, customer(s), pallets per dough, boxes per pallet, brand), brands, this device's station name and lock, the PIN, and voiding
   or restoring rows in the log. Admin closes by itself after 10 minutes without a tap.
 - **Workstation lock.** Admin can lock a device to the packing station: no tabs, no log, no
   settings – unlocking takes the PIN. Unlocked, the device has the full app (Packa, Idag, Admin, Mer).
@@ -55,6 +54,11 @@ Each device keeps its own data (no server yet; a local server is the plan). Mer 
 saves everything as a JSON file (the share sheet on a phone/tablet) and reads one in: records
 are joined by id and the newer copy wins (`updatedAt`, stamped on every write in `db.ts`);
 nothing is deleted. Never put a data file in this repository – it holds people's names.
+
+**Customer, not brand.** The app is organised by customer – who orders the product – as
+everyone at the bakery thinks of it. A product usually has one customer; it can have more
+(shown under each at the station, counted under the first in totals). Brand is only for
+accounting: set it on a product in Admin and it is in the CSV export.
 
 Brands, customers and products are entered in Admin, so the brand names are not written into the
 code (the repository is public). Raw materials and ingredients are not built yet.

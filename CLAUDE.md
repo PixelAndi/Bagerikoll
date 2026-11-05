@@ -2,8 +2,9 @@
 
 A local-first ERP/logistics PWA for a bakery, with the same look as Lönekoll
 (github.com/PixelAndi/lonekoll, the owner's other app). One single app; a device
-can be locked to a simplified workstation view. Products come under more than
-one brand – everything sorts and filters by brand. README.md describes it.
+can be locked to a simplified workstation view. **Everything is categorised by
+customer** (who orders the product); brand is kept only for accounting (Admin and the CSV
+export) – the owner's decision. README.md describes it.
 
 **Phase 1 (built): the packing station** – workers pick their names to
 start a session, register pallets and boxes per product (tied to the session's
@@ -22,8 +23,8 @@ Behind the PIN, or open on a phone marked as a manager's phone in Admin. Out of 
 the owner says: raw materials, ingredients, shipping/QR loading, automatic order import.
 
 **Admin-only = only what the owner explicitly makes admin-only.** Don't hide
-anything else behind the PIN. Now admin-only: managing names, brands, customers and
-products; Produktion (the managers' part; or a manager's phone set in Admin); this device's station name and the workstation lock (and unlocking
+anything else behind the PIN. Now admin-only: managing names, customers, products and
+brands; Produktion (the managers' part; or a manager's phone set in Admin); this device's station name and the workstation lock (and unlocking
 it); changing the PIN; voiding/restoring log rows (workers undo their own for 2
 minutes). The PIN (default from the owner's brief) is stored only as a salted
 hash in `domain/pin.ts`, changeable per device; HANDOVER.md has the full brief.

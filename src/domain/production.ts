@@ -1,6 +1,6 @@
 import type { Brand, Customer, Entry, EntryKind, Product } from './types.ts';
 
-// Counting what was packed: per product, per brand, per day – voided entries left out.
+// Counting what was packed: per product, per customer, per day – voided entries left out.
 
 export interface Count {
   pallets: number;
@@ -27,13 +27,27 @@ export function byProduct(entries: Entry[]): Map<string, Count> {
   return out;
 }
 
-/** Totals per brand (products without a known brand under ""). */
+/** Totals per brand, for accounting (products without a brand under ""). */
 export function byBrand(entries: Entry[], products: Product[]): Map<string, Count> {
-  const brandOf = new Map(products.map((p) => [p.id, p.brandId]));
+  const brandOf = new Map(products.map((p) => [p.id, p.brandId ?? '']));
   const out = new Map<string, Count>();
   for (const e of counted(entries)) {
     const b = brandOf.get(e.productId) ?? '';
     out.set(b, add(out.get(b) ?? emptyCount(), e.kind, e.quantity));
+  }
+  return out;
+}
+
+/**
+ * Totals per customer. A product made for more than one customer counts under the first of them
+ * (an entry doesn't say which customer it was for); products without a customer under "".
+ */
+export function byCustomer(entries: Entry[], products: Product[]): Map<string, Count> {
+  const customerOf = new Map(products.map((p) => [p.id, p.customerIds?.[0] ?? '']));
+  const out = new Map<string, Count>();
+  for (const e of counted(entries)) {
+    const c = customerOf.get(e.productId) ?? '';
+    out.set(c, add(out.get(c) ?? emptyCount(), e.kind, e.quantity));
   }
   return out;
 }
@@ -45,12 +59,9 @@ export function byDay(entries: Entry[]): Map<string, Count> {
   return out;
 }
 
-/** Products sorted by brand (in the brands' order), then by name; a brand filter keeps only its own. */
-export function sortProducts(products: Product[], brands: Brand[], brandId?: string): Product[] {
-  const order = new Map(brands.map((b, i) => [b.id, i]));
-  return products
-    .filter((p) => !p.hidden && (!brandId || p.brandId === brandId))
-    .sort((a, b) => (order.get(a.brandId) ?? 99) - (order.get(b.brandId) ?? 99) || a.name.localeCompare(b.name, 'sv'));
+/** Products in name order, hidden ones left out. */
+export function sortProducts(products: Product[]): Product[] {
+  return products.filter((p) => !p.hidden).sort((a, b) => a.name.localeCompare(b.name, 'sv', { numeric: true }));
 }
 
 export interface CustomerGroup {
@@ -60,11 +71,11 @@ export interface CustomerGroup {
 }
 
 /**
- * Products under their customers (a product made for two customers is under both), each group
- * sorted by brand then name; products without a customer last. With `customerId`, only that one.
+ * Products under their customers (a product made for two customers is under both), each group in
+ * name order; products without a customer last. With `customerId`, only that one.
  */
-export function groupByCustomer(products: Product[], customers: Customer[], brands: Brand[], customerId?: string): CustomerGroup[] {
-  const sorted = sortProducts(products, brands);
+export function groupByCustomer(products: Product[], customers: Customer[], customerId?: string): CustomerGroup[] {
+  const sorted = sortProducts(products);
   const known = new Set(customers.map((c) => c.id));
   const groups: CustomerGroup[] = customers
     .filter((c) => !c.hidden && (!customerId || c.id === customerId))
@@ -91,7 +102,7 @@ export function toCsv(entries: Entry[], products: Product[], brands: Brand[], wo
     rows.push([
       new Date(e.at).toLocaleString('sv-SE'),
       e.day,
-      prod ? (b.get(prod.brandId) ?? '') : '',
+      prod?.brandId ? (b.get(prod.brandId) ?? '') : '',
       (prod?.customerIds ?? []).map((id) => c.get(id) ?? '').filter(Boolean).join(', '),
       prod?.name ?? '',
       prod?.code ?? '',

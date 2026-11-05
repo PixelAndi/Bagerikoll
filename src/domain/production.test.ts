@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { byBrand, byProduct, canWorkerUndo, groupByCustomer, sortProducts, toCsv, total, UNDO_MS } from './production.ts';
+import { byBrand, byCustomer, byProduct, canWorkerUndo, groupByCustomer, sortProducts, toCsv, total, UNDO_MS } from './production.ts';
 import { checkPin, hashPin } from './pin.ts';
 import type { Brand, Entry, Product } from './types.ts';
 
@@ -41,9 +41,8 @@ describe('production totals', () => {
     expect(byBrand(entries, products).get('a')).toEqual({ pallets: 2, boxes: 5 });
     expect(byBrand(entries, products).get('b')).toEqual({ pallets: 1, boxes: 0 });
   });
-  it('sorts products by brand then name, hides hidden ones, filters by brand', () => {
-    expect(sortProducts(products, brands).map((p) => p.id)).toEqual(['p2', 'p1', 'p3']);
-    expect(sortProducts(products, brands, 'b').map((p) => p.id)).toEqual(['p3']);
+  it('sorts products by name and hides hidden ones', () => {
+    expect(sortProducts(products).map((p) => p.id)).toEqual(['p3', 'p2', 'p1']);
   });
   it('lets workers undo only recent entries', () => {
     expect(canWorkerUndo(entry('x', 'p1', 'box', 1, { at: 0 }), UNDO_MS)).toBe(true);
@@ -72,7 +71,7 @@ describe('products under their customers', () => {
     { id: 'p3', name: 'Bröd', brandId: 'b' },
   ];
   it('puts a product under each of its customers, and those without one last', () => {
-    const groups = groupByCustomer(list, customers, brands);
+    const groups = groupByCustomer(list, customers);
     expect(groups.map((g) => [g.customer?.id, g.products.map((p) => p.id)])).toEqual([
       ['k1', ['p2', 'p1']],
       ['k2', ['p2']],
@@ -80,7 +79,12 @@ describe('products under their customers', () => {
     ]);
   });
   it('shows one customer when one is picked', () => {
-    expect(groupByCustomer(list, customers, brands, 'k2').map((g) => g.customer?.id)).toEqual(['k2']);
+    expect(groupByCustomer(list, customers, 'k2').map((g) => g.customer?.id)).toEqual(['k2']);
+  });
+  it('counts per customer, a shared product under its first customer', () => {
+    const per = byCustomer([entry('1', 'p2', 'pallet', 2), entry('2', 'p3', 'box', 4)], list);
+    expect(per.get('k1')).toEqual({ pallets: 2, boxes: 0 });
+    expect(per.get('')).toEqual({ pallets: 0, boxes: 4 });
   });
 });
 

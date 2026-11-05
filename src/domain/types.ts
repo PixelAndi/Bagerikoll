@@ -12,7 +12,7 @@ export interface Worker {
   updatedAt?: number;
 }
 
-/** A brand the products are sold under; products are sorted and filtered by it. */
+/** A brand the products are sold under – for accounting only (in the CSV export); everything else goes by customer. */
 export interface Brand {
   id: string;
   name: string;
@@ -32,7 +32,8 @@ export interface Customer {
 export interface Product {
   id: string;
   name: string;
-  brandId: string;
+  /** For accounting only; may be empty. */
+  brandId?: string;
   /** Article number, if the bakery uses one. */
   code?: string;
   /** The customers it is made for (usually one). */

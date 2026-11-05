@@ -25,14 +25,14 @@ const time = (at: number) => new Date(at).toLocaleTimeString('sv-SE', { hour: '2
 /** The log for a day or a range: every entry with its packers and station. Voiding is for admins. */
 export function Log() {
   const { t, admin } = useApp();
-  const { workers, brands, products } = useCatalog();
+  const { workers, brands, customers, products } = useCatalog();
   const today = todayLocal();
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
-  const [brandId, setBrandId] = useState('');
+  const [customerId, setCustomerId] = useState('');
   const all = useLiveQuery(() => db.entries.where('day').between(from, to, true, true).toArray(), [from, to]) ?? [];
-  const brandOf = new Map(products.map((p) => [p.id, p.brandId]));
-  const entries = all.filter((e) => !brandId || brandOf.get(e.productId) === brandId).sort((a, b) => b.at - a.at);
+  const customersOf = new Map(products.map((p) => [p.id, p.customerIds ?? []]));
+  const entries = all.filter((e) => !customerId || customersOf.get(e.productId)?.includes(customerId)).sort((a, b) => b.at - a.at);
   const sum = total(entries);
   const name = (id: string) => workers.find((w) => w.id === id)?.name ?? '?';
   const voidIt = async (e: Entry) => {
@@ -41,7 +41,7 @@ export function Log() {
     await db.entries.update(e.id, { voided: { at: Date.now(), by: 'admin', reason } });
   };
   const exportCsv = () => {
-    const blob = new Blob(['﻿' + toCsv(entries, products, brands, workers)], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob(['﻿' + toCsv(entries, products, brands, workers, customers)], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `bagerikoll-${from}${to !== from ? `-${to}` : ''}.csv`;
@@ -69,11 +69,11 @@ export function Log() {
         <button type="button" className="cal-chip" onClick={() => (setFrom(addDays(today, -6)), setTo(today))}>
           {t('admin.last7')}
         </button>
-        <select value={brandId} onChange={(e) => setBrandId(e.target.value)} aria-label={t('pack.brand')}>
-          <option value="">{t('pack.allBrands')}</option>
-          {brands.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
+        <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} aria-label={t('pack.customer')}>
+          <option value="">{t('log.allCustomers')}</option>
+          {customers.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
             </option>
           ))}
         </select>
