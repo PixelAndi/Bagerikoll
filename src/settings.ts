@@ -15,6 +15,8 @@ export interface Settings {
   pinHash?: string;
   /** The changed PIN's number of digits (the PIN pad checks once that many are typed). */
   pinLength?: number;
+  /** A manager's own phone: Produktion opens without the PIN on this device (never on a locked station). */
+  productionOpen?: boolean;
   /** The session running at this station. */
   sessionId?: string;
 }

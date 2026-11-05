@@ -5,26 +5,37 @@ A local-first ERP/logistics PWA for a bakery, with the same look as Lönekoll
 can be locked to a simplified workstation view. Products come under more than
 one brand – everything sorts and filters by brand. README.md describes it.
 
-**Phase 1 (built): the packing station only** – workers pick their names to
+**Phase 1 (built): the packing station** – workers pick their names to
 start a session, register pallets and boxes per product (tied to the session's
 workers), undo within 2 minutes (voided, never deleted). Idag shows the totals
 at a glance and who packed what; Logg (open to all) has every entry with its
-packers, station and time, filters and CSV export. Out of scope until the owner
-says: raw materials, ingredients, dough calculations.
+packers, station and time, filters and CSV export. Products are grouped under their
+customer at the station; "Byt packare" changes who is packing (anyone, no PIN; creating names
+is Admin's). Pallet +1 only (rests 1.5 s against double taps), boxes +1/+5/+10.
+
+**Phase 2 (built): Produktion** (`ui/ProductionView.tsx`, `domain/plan.ts` + tests), for the
+managers on their phones: orders from the paper list (pallets by default, boxes possible),
+doughs per product per day, deviations (scrapped / low yield / other), stock (count ± packed
+± loaded; "Lastad" on an order stands in for shipping), and the plan: doughs = need ÷ usual
+yield, rounded up, with the chance it's enough. Deviation days are kept out of the yield.
+Behind the PIN, or open on a phone marked as a manager's phone in Admin. Out of scope until
+the owner says: raw materials, ingredients, shipping/QR loading, automatic order import.
 
 **Admin-only = only what the owner explicitly makes admin-only.** Don't hide
-anything else behind the PIN. Now admin-only: managing names, brands and
-products; this device's station name and the workstation lock (and unlocking
+anything else behind the PIN. Now admin-only: managing names, brands, customers and
+products; Produktion (the managers' part; or a manager's phone set in Admin); this device's station name and the workstation lock (and unlocking
 it); changing the PIN; voiding/restoring log rows (workers undo their own for 2
 minutes). The PIN (default from the owner's brief) is stored only as a salted
 hash in `domain/pin.ts`, changeable per device; HANDOVER.md has the full brief.
 
 - **Don't write the company's or the brands' real names into the code** (public
   repo) – they are data entered in Admin. Tests use made-up names.
-- Data lives per device (Dexie, `src/db.ts`); there is no shared log between
-  devices yet – raise it with the owner before building sync.
-- Map: `src/domain/` (types, production totals/CSV, PIN; tests), `src/ui/PackView.tsx`
-  (station), `TodayView.tsx` (Idag), `ProductionLog.tsx` (Logg + per packer),
+- Data lives per device (Dexie, `src/db.ts`). Devices exchange data by file (Mer → Datafil,
+  `src/datafile.ts`, merge in `domain/datafile.ts`: by id, newer `updatedAt` wins, nothing
+  deleted). The owner's goal is a local server – to be discussed with the boss first; don't
+  build sync before that. Never commit a data file (people's names).
+- Map: `src/domain/` (types, production totals/CSV, plan, data file merge, PIN; tests),
+  `src/ui/PackView.tsx` (station), `ProductionView.tsx` (Produktion), `TodayView.tsx` (Idag), `ProductionLog.tsx` (Logg + per packer),
   `AdminView.tsx`, `PinPad.tsx`, `App.tsx`
   (admin state, idle close, locked mode), `settings.ts` (per device, localStorage).
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { byBrand, byProduct, canWorkerUndo, sortProducts, toCsv, total, UNDO_MS } from './production.ts';
+import { byBrand, byProduct, canWorkerUndo, groupByCustomer, sortProducts, toCsv, total, UNDO_MS } from './production.ts';
 import { checkPin, hashPin } from './pin.ts';
 import type { Brand, Entry, Product } from './types.ts';
 
@@ -56,8 +56,31 @@ describe('production totals', () => {
     ]);
     const lines = csv.split('\r\n');
     expect(lines).toHaveLength(5);
-    expect(lines[1]).toContain('Märke A;Limpa;;Pall;2;Anna, Team Natt;Pack 1;;');
+    expect(lines[1]).toContain('Märke A;;Limpa;;Pall;2;Anna, Team Natt;Pack 1;;');
     expect(lines[4]).toContain(';fel');
+  });
+});
+
+describe('products under their customers', () => {
+  const customers = [
+    { id: 'k1', name: 'Kund Ett' },
+    { id: 'k2', name: 'Kund Två' },
+  ];
+  const list: Product[] = [
+    { id: 'p1', name: 'Limpa', brandId: 'a', customerIds: ['k1'] },
+    { id: 'p2', name: 'Bulle', brandId: 'a', customerIds: ['k1', 'k2'] },
+    { id: 'p3', name: 'Bröd', brandId: 'b' },
+  ];
+  it('puts a product under each of its customers, and those without one last', () => {
+    const groups = groupByCustomer(list, customers, brands);
+    expect(groups.map((g) => [g.customer?.id, g.products.map((p) => p.id)])).toEqual([
+      ['k1', ['p2', 'p1']],
+      ['k2', ['p2']],
+      [undefined, ['p3']],
+    ]);
+  });
+  it('shows one customer when one is picked', () => {
+    expect(groupByCustomer(list, customers, brands, 'k2').map((g) => g.customer?.id)).toEqual(['k2']);
   });
 });
 

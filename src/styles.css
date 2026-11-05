@@ -1375,11 +1375,26 @@ input[type='checkbox'] {
 .pack-product-count { color: var(--muted); font-weight: 600; }
 .pack-register-off { opacity: 0.55; }
 .pack-product-name { font-size: 1.3rem; }
-.pack-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+/* The pallet button: the biggest, the whole width. Boxes in steps below it, a clear gap between
+   them so a fast or wide finger doesn't hit the neighbour. */
+.pack-register .pack-pallet {
+  width: 100%;
+  min-height: 170px;
+  font-size: 1.6rem;
 }
+.pack-register .pack-pallet .pack-plus { font-size: 3.4rem; }
+.pack-pausing { filter: brightness(1.15); }
+.pack-box-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.pack-box-buttons .pack-big { min-height: 104px; font-size: 1.15rem; }
+.pack-box-buttons .pack-plus { font-size: 2.2rem; }
+.pack-other-boxes { width: 100%; min-height: 56px; margin-top: 14px; font-size: 1.05rem; }
+.pack-group { font-size: 1.05rem; margin: 6px 0 8px; color: var(--muted); }
+.pack-who-buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .pack-big {
   display: flex;
   flex-direction: column;
@@ -1489,7 +1504,8 @@ input[type='checkbox'] {
 .add-row input[type='text'] { flex: 1; min-width: 140px; }
 
 @media (min-width: 900px) {
-  .app-station .pack-big { min-height: 180px; font-size: 1.7rem; }
+  .app-station .pack-register .pack-pallet { min-height: 220px; font-size: 1.9rem; }
+  .app-station .pack-box-buttons .pack-big { min-height: 130px; font-size: 1.35rem; }
   .app-station .pack-products { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
 }
 .link-button {
@@ -1522,3 +1538,32 @@ input[type='checkbox'] {
 }
 .cal-year-nav .link-inline:disabled { opacity: 0.3; cursor: default; }
 .pack-brands .cal-chip:not(.pack-chip-on) { background: var(--surface-2); }
+
+/* Produktion: made for a manager's phone. */
+.cal-chip-bad { background: var(--cal-sick); }
+.check-row { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0; cursor: pointer; }
+.check-row input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+.prod-days { align-items: center; margin-bottom: 12px; }
+.prod-days input[type='date'] { min-height: 44px; }
+.plan-rows { list-style: none; padding: 0; margin: 4px 0 8px; }
+.plan-rows li { padding: 10px 0; }
+.plan-rows li + li { border-top: 1px solid var(--border); }
+.plan-rows p { margin: 4px 0 0; }
+.plan-rows .cal-chips { margin: 6px 0 0; }
+.plan-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.plan-head > span:first-child { display: flex; flex-direction: column; }
+.plan-doughs { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
+.plan-doughs strong { font-size: 2rem; line-height: 1.05; }
+.prod-check li { align-items: center; }
+.prod-sub { font-size: 1rem; margin: 14px 0 4px; }
+.prod-order-buttons { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.stepper { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.stepper .button { min-width: 48px; min-height: 48px; font-size: 1.4rem; padding: 0; }
+.stepper input { width: 3.2em; min-height: 48px; text-align: center; font-size: 1.15rem; font-weight: 700; }
+.order-lines li { flex-wrap: wrap; }
+.order-steppers { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.dev-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.dev-kinds .pack-name { display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 4px; min-height: 64px; }
+.dev-kinds .pack-name .small { font-weight: 400; }
+.warn-text { color: var(--cal-missing-strong); font-weight: 600; }
+.ok { color: var(--cal-worked-strong); font-weight: 600; }

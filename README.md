@@ -8,9 +8,12 @@ important numbers big, how things stand in coloured squares and chips, details f
 
 - **Who is packing.** Workers tap their names (or a team's nickname) to start a session;
   several can pack together. Every pallet or box registered is tied to everyone in the session.
-- **Packing.** Choose a product (filter by brand), then tap **+1 Pall** or **+1 Kartong** –
-  big buttons for a tablet on the floor. "Fler …" registers another number on a big number pad.
-  What was just registered is shown big, so a wrong tap is seen at once.
+- **Who is packing can change.** "Byt packare" adds or takes off anyone from the running
+  session, no PIN; entries from then on are theirs. (Creating or hiding names is Admin's.)
+- **Packing.** Products are grouped under their customer (chips filter by customer; with no
+  customers set up, by brand). **+1 Pall** is the biggest button and rests 1.5 s after a tap, so
+  a double tap isn't two pallets (pallets are counted one by one). Boxes: **+1 / +5 / +10**,
+  and "Fler kartonger …" for another number. What was just registered is shown big.
 - **Undo, never delete.** A worker can undo an entry for two minutes; later only an admin can
   void it, with a reason. Voided entries stay in the log and are left out of every total.
 - **Idag.** Today's pallets and boxes, each brand as a chip, the week as squares (darker =
@@ -18,14 +21,43 @@ important numbers big, how things stand in coloured squares and chips, details f
 - **Logg.** Every entry with its packers, station and time, by date range and brand, with
   CSV export (opens in Excel). Open to everyone.
 - **Admin (PIN).** Only what the owner has made admin-only: names, brands (with colours),
-  products (with article numbers), this device's station name and lock, the PIN, and voiding
+  customers, products (article number, brand, customer(s), pallets per dough, boxes per pallet), this device's station name and lock, the PIN, and voiding
   or restoring rows in the log. Admin closes by itself after 10 minutes without a tap.
 - **Workstation lock.** Admin can lock a device to the packing station: no tabs, no log, no
   settings – unlocking takes the PIN. Unlocked, the device has the full app (Packa, Idag, Admin, Mer).
 
-Brands and products are entered in Admin, so the brand names are not written into the
-code (the repository is public). Raw materials, ingredients and dough calculations are not
-part of phase 1.
+## Produktion (managers, phone-first)
+
+Behind the PIN, or always open on a phone Admin marks as a manager's phone (never on a locked
+station). The production day is the packing day.
+
+- **Plan for a day.** Per product: ordered, in stock, to make, and the recommended doughs –
+  what's needed ÷ what a dough usually gives, **rounded up** – with how likely that is to be
+  enough ("Räcker: 86 %") and what one more dough gives. Green ≥ 90 %, yellow ≥ 70 %, red below.
+- **What a dough gives** is learnt from history: the day's packed pallets (boxes as part of a
+  pallet when boxes per pallet is set) ÷ the day's good doughs. Scrapped doughs are left out; a
+  day with a low-yield or other deviation is kept out of the average. Up to the latest 30 normal
+  days; under 5 days it leans on the expected pallets per dough set in Admin (default 1) and
+  says "lite historik". The chance is a normal distribution over the day-to-day spread.
+- **Orders** are copied from the paper list: customer, then pallets per product (boxes when
+  needed). Marking an order **Lastad** takes it out of stock – the stand-in for shipping until
+  the QR/loading system exists.
+- **Doughs and deviations.** Doughs per product per day; deviations: scrapped (how many, and
+  the day they're made again), low yield (unexplained), other.
+- **Stock** = the latest count (Inventera) ± what was packed and loaded since.
+- **Att kolla:** a finished day that gave clearly less than usual (a missed pallet?), doughs
+  counted with nothing packed on this device (read in the station's data file), orders from
+  earlier days not marked as loaded.
+
+## Data between devices
+
+Each device keeps its own data (no server yet; a local server is the plan). Mer → **Datafil**
+saves everything as a JSON file (the share sheet on a phone/tablet) and reads one in: records
+are joined by id and the newer copy wins (`updatedAt`, stamped on every write in `db.ts`);
+nothing is deleted. Never put a data file in this repository – it holds people's names.
+
+Brands, customers and products are entered in Admin, so the brand names are not written into the
+code (the repository is public). Raw materials and ingredients are not built yet.
 
 ### About the PIN and the data
 

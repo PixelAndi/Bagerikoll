@@ -84,19 +84,30 @@ are deliberately not in this public repository.
   The owner writes in English; the UI is Swedish first.
 - Say plainly what was and wasn't tested.
 
+## Phase 2, built: Produktion (see README)
+
+Orders, doughs, deviations, stock and the dough recommendation with its chance of being
+enough; customers in Admin; the packing station grouped by customer, "Byt packare", and
++1 pallet / +1, +5, +10 boxes.
+
 ## Known limits and open decisions (raise these with the owner)
 
-1. **Each device keeps its own log.** There is no shared data between devices,
-   so the floor tablet and a manager's phone don't see each other's entries. A
-   real ERP needs a shared store (a small server, or a shared drive like
-   Lönekoll's optional Google Drive copy). This is the next big decision.
+1. **Each device keeps its own data.** For now devices swap a data file (Mer → Datafil).
+   The owner wants a local server – to discuss with the boss before building it.
+5. **Missed pallets.** The owner is looking for a way to never miss a pallet. Built so far:
+   the 1.5 s rest after a pallet tap, and "Att kolla" flags a day that gave clearly less than its
+   doughs usually do. Ideas raised: a reminder when no pallet has come for longer than usual;
+   a label (with QR) printed per pallet, tying into the planned QR loading check.
+6. **Shipping** is not decided (idea: QR on each pallet, a webcam checks what is loaded).
+   Until then an order is marked "Lastad" by hand.
+7. **Orders** are typed in by hand from the paper list; later they should come in
+   automatically and the managers only confirm the production list.
 2. **The PIN is a lock against casual use, not real security.** The app runs
    only in the browser and its code is public, so the default PIN can be worked
    out from the repository. Change it per device under Admin.
 3. **Not tried on a real tablet yet.** It was checked in a browser at tablet
    size (1024×768) and phone size.
-4. **Later phases named in the brief:** raw materials, ingredients and dough
-   calculations, and the rest of production and shipping.
+4. **Later phases named in the brief:** raw materials and ingredients, and shipping.
 
 ## Map
 

@@ -11,15 +11,17 @@ import { MoreView } from './ui/MoreView.tsx';
 import { PackView } from './ui/PackView.tsx';
 import { LogView } from './ui/ProductionLog.tsx';
 import { PinPad } from './ui/PinPad.tsx';
+import { ProductionView } from './ui/ProductionView.tsx';
 import { TodayView } from './ui/TodayView.tsx';
 
 // While the app is tested, a "Beta" badge shows in the header (as in Lönekoll).
 const BETA = true;
 
-type TabIcon = 'pack' | 'today' | 'slips' | 'lock' | 'more';
+type TabIcon = 'pack' | 'today' | 'month' | 'slips' | 'lock' | 'more';
 const TABS: { route: Route; icon: TabIcon; label: TextKey; match: Route['name'][] }[] = [
   { route: { name: 'pack' }, icon: 'pack', label: 'nav.pack', match: ['pack'] },
   { route: { name: 'today' }, icon: 'today', label: 'nav.today', match: ['today'] },
+  { route: { name: 'production' }, icon: 'month', label: 'nav.production', match: ['production'] },
   { route: { name: 'log' }, icon: 'slips', label: 'nav.log', match: ['log'] },
   { route: { name: 'admin' }, icon: 'lock', label: 'nav.admin', match: ['admin'] },
   { route: { name: 'more' }, icon: 'more', label: 'nav.more', match: ['more', 'design'] },
@@ -101,6 +103,8 @@ function Screen({ route }: { route: Route }) {
   switch (route.name) {
     case 'today':
       return <TodayView />;
+    case 'production':
+      return <ProductionView />;
     case 'log':
       return <LogView />;
     case 'admin':

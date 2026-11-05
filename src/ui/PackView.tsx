@@ -1,15 +1,16 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../app-context.ts';
 import { useCatalog, useEntriesOn } from '../data.ts';
 import { todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
-import { byProduct, canWorkerUndo, sortProducts, total } from '../domain/production.ts';
+import { byProduct, canWorkerUndo, groupByCustomer, sortProducts, total } from '../domain/production.ts';
 import type { Entry, EntryKind, Product } from '../domain/types.ts';
 import { href } from '../router.ts';
 import { Modal, Notice, Page } from './common.tsx';
 
-// The packing station: who is packing, which product, and two big buttons – a pallet, a box.
+// The packing station: who is packing, which product (under its customer), a big pallet button
+// and box buttons in steps.
 // Every registration is tied to the workers of the session. At a glance: what this session and
 // today have packed. A mistake is undone (voided) on the spot, never deleted.
 
@@ -58,20 +59,26 @@ function StartSession() {
 
 function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: string[] }) {
   const { t, settings, save } = useApp();
-  const { workers, brands, products } = useCatalog();
+  const { workers, brands, customers, products } = useCatalog();
   const today = todayLocal();
   const todays = useEntriesOn(today);
   const mine = useMemo(() => todays.filter((e) => e.sessionId === sessionId), [todays, sessionId]);
-  const [brandId, setBrandId] = useState<string>();
+  const [filter, setFilter] = useState<string>();
   const [productId, setProductId] = useState<string>();
-  const [other, setOther] = useState<EntryKind | null>(null);
+  const [boxPad, setBoxPad] = useState(false);
+  const [changeWho, setChangeWho] = useState(false);
+  const [palletPause, setPalletPause] = useState(false);
+  const lastPallet = useRef(0);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
   }, []);
   const names = workerIds.map((id) => workers.find((w) => w.id === id)?.name ?? '?');
-  const list = sortProducts(products, brands, brandId);
+  // Products under their customers; with no customers set up yet, by brand as before.
+  const byCustomer = customers.some((c) => !c.hidden);
+  const groups = byCustomer ? groupByCustomer(products, customers, brands, filter) : [{ products: sortProducts(products, brands, filter) }];
+  const chips = byCustomer ? customers.filter((c) => !c.hidden).map((c) => ({ id: c.id, name: c.name, color: undefined as string | undefined })) : brands;
   const product = products.find((p) => p.id === productId);
   const perProduct = byProduct(mine);
   const sessionTotal = total(mine);
@@ -80,9 +87,16 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
 
   const register = async (kind: EntryKind, quantity: number) => {
     if (!product || quantity <= 0) return;
+    // Pallets are counted one by one: a second tap straight after is taken as a slip, not a pallet.
+    if (kind === 'pallet') {
+      if (Date.now() - lastPallet.current < PALLET_PAUSE_MS) return;
+      lastPallet.current = Date.now();
+      setPalletPause(true);
+      setTimeout(() => setPalletPause(false), PALLET_PAUSE_MS);
+    }
     const e: Entry = { id: newId(), at: Date.now(), day: todayLocal(), kind, quantity, productId: product.id, sessionId, workerIds, station: settings.station };
     await db.entries.put(e);
-    navigator.vibrate?.(40);
+    navigator.vibrate?.(kind === 'pallet' ? 80 : 40);
     setNow(Date.now());
   };
   const undo = (e: Entry) => db.entries.update(e.id, { voided: { at: Date.now(), by: 'worker', reason: t('pack.undoReason') } });
@@ -99,51 +113,58 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
           <span className="muted small">{t('pack.packing')}</span>
           <strong>{names.join(', ')}</strong>
         </span>
-        <button type="button" className="button" onClick={() => void end()}>
-          {t('pack.end')}
-        </button>
+        <span className="pack-who-buttons">
+          <button type="button" className="button" onClick={() => setChangeWho(true)}>
+            {t('pack.changeWho')}
+          </button>
+          <button type="button" className="button" onClick={() => void end()}>
+            {t('pack.end')}
+          </button>
+        </span>
       </section>
 
-      <div className="cal-chips pack-brands" role="group" aria-label={t('pack.brand')}>
-        <button type="button" className={`cal-chip ${!brandId ? 'pack-chip-on' : ''}`} onClick={() => setBrandId(undefined)}>
+      <div className="cal-chips pack-brands" role="group" aria-label={t(byCustomer ? 'pack.customer' : 'pack.brand')}>
+        <button type="button" className={`cal-chip ${!filter ? 'pack-chip-on' : ''}`} onClick={() => setFilter(undefined)}>
           {t('pack.allBrands')}
         </button>
-        {brands.map((b) => (
-          <button key={b.id} type="button" className={`cal-chip ${brandId === b.id ? 'pack-chip-on' : ''}`} style={{ ['--brand' as string]: b.color }} onClick={() => setBrandId(b.id)}>
-            <i className="brand-dot" /> {b.name}
+        {chips.map((b) => (
+          <button key={b.id} type="button" className={`cal-chip ${filter === b.id ? 'pack-chip-on' : ''}`} style={b.color ? { ['--brand' as string]: b.color } : undefined} onClick={() => setFilter(b.id)}>
+            {b.color && <i className="brand-dot" />} {b.name}
           </button>
         ))}
       </div>
 
-      <div className="pack-products">
-        {list.map((p) => (
-          <ProductTile key={p.id} product={p} color={brands.find((b) => b.id === p.brandId)?.color} on={p.id === productId} count={perProduct.get(p.id)} onPick={() => setProductId(p.id)} />
-        ))}
-      </div>
+      {groups.map((g, i) => (
+        <div key={g.customer?.id ?? `none-${i}`}>
+          {byCustomer && <h2 className="pack-group">{g.customer?.name ?? t('pack.noCustomer')}</h2>}
+          <div className="pack-products">
+            {g.products.map((p) => (
+              <ProductTile key={p.id} product={p} color={brands.find((b) => b.id === p.brandId)?.color} on={p.id === productId} count={perProduct.get(p.id)} onPick={() => setProductId(p.id)} />
+            ))}
+          </div>
+        </div>
+      ))}
 
       <section className={`card cal-focus pack-register ${product ? '' : 'pack-register-off'}`}>
         <div className="cal-focus-head">
           <strong className="pack-product-name">{product ? product.name : t('pack.pickProduct')}</strong>
-          {product && <span className="small muted">{brands.find((b) => b.id === product.brandId)?.name}</span>}
+          {product && <span className="small muted">{[product.code, brands.find((b) => b.id === product.brandId)?.name].filter(Boolean).join(' · ')}</span>}
         </div>
-        <div className="pack-buttons">
-          <button type="button" className="pack-big pack-pallet" disabled={!product} onClick={() => void register('pallet', 1)}>
-            <span className="pack-plus">+1</span>
-            {t('pack.pallet')}
-          </button>
-          <button type="button" className="pack-big pack-box" disabled={!product} onClick={() => void register('box', 1)}>
-            <span className="pack-plus">+1</span>
-            {t('pack.box')}
-          </button>
+        <button type="button" className={`pack-big pack-pallet ${palletPause ? 'pack-pausing' : ''}`} disabled={!product} aria-disabled={palletPause} onClick={() => void register('pallet', 1)}>
+          <span className="pack-plus">{palletPause ? '✓' : '+1'}</span>
+          {palletPause ? t('pack.palletDone') : t('pack.pallet')}
+        </button>
+        <div className="pack-box-buttons" role="group" aria-label={t('pack.boxesWord')}>
+          {BOX_STEPS.map((n) => (
+            <button key={n} type="button" className="pack-big pack-box" disabled={!product} onClick={() => void register('box', n)}>
+              <span className="pack-plus">+{n}</span>
+              {t(n === 1 ? 'pack.box' : 'pack.boxes')}
+            </button>
+          ))}
         </div>
-        <div className="pack-other">
-          <button type="button" className="link-button" disabled={!product} onClick={() => setOther('pallet')}>
-            {t('pack.otherPallets')}
-          </button>
-          <button type="button" className="link-button" disabled={!product} onClick={() => setOther('box')}>
-            {t('pack.otherBoxes')}
-          </button>
-        </div>
+        <button type="button" className="button pack-other-boxes" disabled={!product} onClick={() => setBoxPad(true)}>
+          {t('pack.otherBoxes')}
+        </button>
       </section>
 
       {last[0] && <LastEntry entry={last[0]} product={products.find((p) => p.id === last[0].productId)} now={now} onUndo={undo} />}
@@ -173,8 +194,43 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
         </section>
       )}
 
-      {other && product && <QuantityPad kind={other} product={product} onClose={() => setOther(null)} onDone={(n) => void register(other, n).then(() => setOther(null))} />}
+      {boxPad && product && <QuantityPad kind="box" product={product} onClose={() => setBoxPad(false)} onDone={(n) => void register('box', n).then(() => setBoxPad(false))} />}
+      {changeWho && <ChangeWho sessionId={sessionId} workerIds={workerIds} onClose={() => setChangeWho(false)} />}
     </>
+  );
+}
+
+/** Boxes go in steps; pallets one at a time. */
+const BOX_STEPS = [1, 5, 10];
+/** After a pallet, the pallet button rests this long (a double tap isn't two pallets). */
+const PALLET_PAUSE_MS = 1500;
+
+/** Anyone at the station can add or take off who is packing now; from then on, entries are theirs. */
+function ChangeWho({ sessionId, workerIds, onClose }: { sessionId: string; workerIds: string[]; onClose: () => void }) {
+  const { t } = useApp();
+  const { workers } = useCatalog();
+  const [chosen, setChosen] = useState(workerIds);
+  const shown = workers.filter((w) => !w.hidden || workerIds.includes(w.id));
+  const toggle = (id: string) => setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
+  const done = async () => {
+    await db.sessions.update(sessionId, { workerIds: chosen });
+    onClose();
+  };
+  return (
+    <Modal title={t('pack.changeWho')} onClose={onClose}>
+      <p className="small muted">{t('pack.changeWhoHint')}</p>
+      <div className="pack-names">
+        {shown.map((w) => (
+          <button key={w.id} type="button" className={`pack-name ${chosen.includes(w.id) ? 'on' : ''}`} aria-pressed={chosen.includes(w.id)} onClick={() => toggle(w.id)}>
+            {chosen.includes(w.id) && <span aria-hidden="true">✓ </span>}
+            {w.name}
+          </button>
+        ))}
+      </div>
+      <button type="button" className="button button-primary pack-start" disabled={!chosen.length} onClick={() => void done()}>
+        {chosen.length ? t('pack.whoDone', { names: chosen.map((id) => workers.find((w) => w.id === id)?.name).join(', ') }) : t('pack.pickNames')}
+      </button>
+    </Modal>
   );
 }
 
