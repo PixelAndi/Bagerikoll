@@ -8,8 +8,15 @@ important numbers big, how things stand in coloured squares and chips, details f
 
 - **Who is packing.** Workers tap their names (or a team's nickname) to start a session;
   several can pack together. Every pallet or box registered is tied to everyone in the session.
-- **Who is packing can change.** "Byt packare" adds or takes off anyone from the running
-  session, no PIN; entries from then on are theirs. (Creating or hiding names is Admin's.)
+- **Who is packing can change.** Every name is on the station: the active packers filled,
+  the rest outlined. Anyone can tap a name to add or take it off – then "Är du säker?" with
+  big Ja/Nej buttons. Several can pack at once; every entry is on all the active packers. The
+  last one can't be taken off (finish the session instead). No PIN; creating or hiding names
+  is Admin's.
+- **Landscape tablet.** Two columns: on the left what is packed now – the product, +1 Pall,
+  the box buttons and the last entry with Ångra – always in view; on the right who is packing,
+  Avvikelse / Avsluta körning, changing product, the totals and the latest entries. A phone or
+  an upright tablet shows the same, stacked.
 - **Packing.** Products are grouped under their customer, with chips to filter by customer. **+1 Pall** is the biggest button and rests 1.5 s after a tap, so
   a double tap isn't two pallets (pallets are counted one by one). Boxes: **+1 / +5 / +10**,
   and "Fler kartonger …" for another number. What was just registered is shown big.

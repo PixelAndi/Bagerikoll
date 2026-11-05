@@ -1622,3 +1622,43 @@ input[type='checkbox'] {
   .proto-table th { background: #eee; }
   .proto-ok { color: #000; }
 }
+
+/* The station's two halves: what is packed now (main) and everything around it (side). Stacked on
+   a phone or a tablet held upright; side by side on a tablet in landscape, the main half staying in
+   view while the side scrolls. */
+.pack-layout { display: flex; flex-direction: column; gap: 0; }
+.pack-run-buttons { margin: 0 0 14px; }
+.pack-choose .pack-products { margin-bottom: 8px; }
+.app-station .page-header { display: none; }
+
+/* Who is packing: active names filled, the others outlined; one tap, then "Är du säker?". */
+.pack-packers .cal-focus-head { margin-bottom: 8px; }
+.packer-chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 12px; }
+.packer-chip {
+  min-height: 56px;
+  min-width: 96px;
+  padding: 8px 18px;
+  border: 2px dashed var(--border);
+  border-radius: 28px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.packer-chip.on { border: 2px solid var(--primary); background: var(--primary-soft); color: var(--primary); }
+.confirm-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+.confirm-buttons .button { min-height: 72px; font-size: 1.25rem; }
+
+@media (orientation: landscape) and (min-width: 900px) {
+  .app-station { max-width: none; padding-left: 20px; padding-right: 20px; }
+  .pack-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); gap: 18px; align-items: start; }
+  .pack-main { position: sticky; top: 8px; }
+  .pack-side .pack-products { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .pack-side .pack-product { min-height: 72px; }
+  .pack-register .pack-pallet { min-height: 200px; }
+  .app-station .pack-register .pack-pallet { min-height: 210px; }
+  .app-station .pack-box-buttons .pack-big { min-height: 120px; }
+}

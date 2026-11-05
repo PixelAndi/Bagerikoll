@@ -11,8 +11,10 @@ start a session, register pallets and boxes per product (tied to the session's
 workers), undo within 2 minutes (voided, never deleted). Idag shows the totals
 at a glance and who packed what; Logg (open to all) has every entry with its
 packers, station and time, filters and CSV export. Products are grouped under their
-customer at the station; "Byt packare" changes who is packing (anyone, no PIN; creating names
-is Admin's). Pallet +1 only (rests 1.5 s against double taps), boxes +1/+5/+10.
+customer at the station; who is packing is a list of all names (active filled, the rest
+outlined) – anyone taps one to add/remove it, confirmed with "Är du säker?" (no PIN; creating
+names is Admin's; the last active packer can't be removed). Landscape tablet: two columns
+(`.pack-main` sticky on the left with the buttons and the last entry, `.pack-side` on the right). Pallet +1 only (rests 1.5 s against double taps), boxes +1/+5/+10.
 
 **Runs + the packing protocol (built; replaces the paper form – a food-safety record, the owner
 wants it compliant):** `domain/runs.ts` (+ tests), `PackView.tsx`, `ProtocolView.tsx`. A run =

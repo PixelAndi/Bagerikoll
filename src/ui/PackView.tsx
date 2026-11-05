@@ -60,7 +60,7 @@ function StartSession() {
 
 function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: string[] }) {
   const { t, settings, save } = useApp();
-  const { workers, customers, products } = useCatalog();
+  const { customers, products } = useCatalog();
   const today = todayLocal();
   const todays = useEntriesOn(today);
   const mine = useMemo(() => todays.filter((e) => e.sessionId === sessionId), [todays, sessionId]);
@@ -69,7 +69,6 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
   const runEntries = useLiveQuery(() => (run ? db.entries.where('runId').equals(run.id).toArray() : []), [run?.id]) ?? [];
   const [filter, setFilter] = useState<string>();
   const [boxPad, setBoxPad] = useState(false);
-  const [changeWho, setChangeWho] = useState(false);
   const [starting, setStarting] = useState<Product | null>(null);
   const [ending, setEnding] = useState<{ then?: Product } | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -80,7 +79,6 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
     const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
   }, []);
-  const names = workerIds.map((id) => workers.find((w) => w.id === id)?.name ?? '?');
   // Products under the customer they are made for (brand is for accounting only).
   const shownCustomers = customers.filter((c) => !c.hidden);
   const byCustomer = shownCustomers.length > 0;
@@ -108,7 +106,6 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
   };
   const undo = (e: Entry) => db.entries.update(e.id, { voided: { at: Date.now(), by: 'worker', reason: t('pack.undoReason') } });
   const end = async () => {
-    if (!confirm(t('pack.endConfirm'))) return;
     await db.sessions.update(sessionId, { endedAt: Date.now() });
     save({ sessionId: undefined });
   };
@@ -120,46 +117,48 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
   };
 
   return (
-    <>
-      <section className="card pack-who">
-        <span>
-          <span className="muted small">{t('pack.packing')}</span>
-          <strong>{names.join(', ')}</strong>
-        </span>
-        <span className="pack-who-buttons">
-          <button type="button" className="button" onClick={() => setChangeWho(true)}>
-            {t('pack.changeWho')}
-          </button>
-          <button type="button" className="button" onClick={() => void end()}>
-            {t('pack.end')}
-          </button>
-        </span>
-      </section>
+    <div className="pack-layout">
+      {/* Left (landscape): what is packed now – the buttons, and what was just registered, never scrolled away. */}
+      <div className="pack-main">
+        {run && product ? (
+          <section className="card cal-focus pack-register">
+            <RunHead run={run} product={product} entries={runEntries} now={now} />
+            {open ? (
+              <>
+                <button type="button" className={`pack-big pack-pallet ${palletPause ? 'pack-pausing' : ''}`} aria-disabled={palletPause} onClick={() => void register('pallet', 1)}>
+                  <span className="pack-plus">{palletPause ? '✓' : '+1'}</span>
+                  {palletPause ? t('pack.palletDone') : t('pack.pallet')}
+                </button>
+                <div className="pack-box-buttons" role="group" aria-label={t('pack.boxesWord')}>
+                  {BOX_STEPS.map((n) => (
+                    <button key={n} type="button" className="pack-big pack-box" onClick={() => void register('box', n)}>
+                      <span className="pack-plus">+{n}</span>
+                      {t(n === 1 ? 'pack.box' : 'pack.boxes')}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" className="button pack-other-boxes" onClick={() => setBoxPad(true)}>
+                  {t('pack.otherBoxes')}
+                </button>
+              </>
+            ) : (
+              <DetectorTestCard run={run} product={product} workerIds={workerIds} now={now} />
+            )}
+          </section>
+        ) : (
+          <section className="card cal-focus">
+            <strong className="pack-product-name">{t('run.pickProduct')}</strong>
+            <p className="small muted">{t('run.pickProductHint')}</p>
+          </section>
+        )}
+        {last[0] && <LastEntry entry={last[0]} product={products.find((p) => p.id === last[0].productId)} now={now} onUndo={undo} />}
+      </div>
 
-      {run && product ? (
-        <section className="card cal-focus pack-register">
-          <RunHead run={run} product={product} entries={runEntries} now={now} />
-          {open ? (
-            <>
-              <button type="button" className={`pack-big pack-pallet ${palletPause ? 'pack-pausing' : ''}`} aria-disabled={palletPause} onClick={() => void register('pallet', 1)}>
-                <span className="pack-plus">{palletPause ? '✓' : '+1'}</span>
-                {palletPause ? t('pack.palletDone') : t('pack.pallet')}
-              </button>
-              <div className="pack-box-buttons" role="group" aria-label={t('pack.boxesWord')}>
-                {BOX_STEPS.map((n) => (
-                  <button key={n} type="button" className="pack-big pack-box" onClick={() => void register('box', n)}>
-                    <span className="pack-plus">+{n}</span>
-                    {t(n === 1 ? 'pack.box' : 'pack.boxes')}
-                  </button>
-                ))}
-              </div>
-              <button type="button" className="button pack-other-boxes" onClick={() => setBoxPad(true)}>
-                {t('pack.otherBoxes')}
-              </button>
-            </>
-          ) : (
-            <DetectorTestCard run={run} product={product} workerIds={workerIds} now={now} />
-          )}
+      {/* Right (landscape): who is packing, the run's other actions, changing product, totals. */}
+      <div className="pack-side">
+        <Packers sessionId={sessionId} workerIds={workerIds} onEnd={() => void end()} />
+
+        {run && (
           <div className="pack-run-buttons">
             <button type="button" className="button" onClick={() => setReporting(true)}>
               {t('run.deviation')}
@@ -168,70 +167,64 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
               {t('run.end')}
             </button>
           </div>
-        </section>
-      ) : (
-        <section className="card cal-focus">
-          <strong className="pack-product-name">{t('run.pickProduct')}</strong>
-          <p className="small muted">{t('run.pickProductHint')}</p>
-        </section>
-      )}
+        )}
 
-      {last[0] && <LastEntry entry={last[0]} product={products.find((p) => p.id === last[0].productId)} now={now} onUndo={undo} />}
-
-      <h2 className="pack-question">{run ? t('run.changeProduct') : t('run.which')}</h2>
-      {byCustomer && (
-        <div className="cal-chips pack-brands" role="group" aria-label={t('pack.customer')}>
-          <button type="button" className={`cal-chip ${!filter ? 'pack-chip-on' : ''}`} onClick={() => setFilter(undefined)}>
-            {t('pack.allBrands')}
-          </button>
-          {shownCustomers.map((c) => (
-            <button key={c.id} type="button" className={`cal-chip ${filter === c.id ? 'pack-chip-on' : ''}`} onClick={() => setFilter(c.id)}>
-              {c.name}
-            </button>
+        <section className="card pack-choose">
+          <h2 className="card-title">{run ? t('run.changeProduct') : t('run.which')}</h2>
+          {byCustomer && (
+            <div className="cal-chips pack-brands" role="group" aria-label={t('pack.customer')}>
+              <button type="button" className={`cal-chip ${!filter ? 'pack-chip-on' : ''}`} onClick={() => setFilter(undefined)}>
+                {t('pack.allBrands')}
+              </button>
+              {shownCustomers.map((c) => (
+                <button key={c.id} type="button" className={`cal-chip ${filter === c.id ? 'pack-chip-on' : ''}`} onClick={() => setFilter(c.id)}>
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {groups.map((g, i) => (
+            <div key={g.customer?.id ?? `none-${i}`}>
+              {byCustomer && <h3 className="pack-group">{g.customer?.name ?? t('pack.noCustomer')}</h3>}
+              <div className="pack-products">
+                {g.products.map((p) => (
+                  <ProductTile key={p.id} product={p} on={p.id === run?.productId} count={perProduct.get(p.id)} onPick={() => pick(p)} />
+                ))}
+              </div>
+            </div>
           ))}
-        </div>
-      )}
-      {groups.map((g, i) => (
-        <div key={g.customer?.id ?? `none-${i}`}>
-          {byCustomer && <h3 className="pack-group">{g.customer?.name ?? t('pack.noCustomer')}</h3>}
-          <div className="pack-products">
-            {g.products.map((p) => (
-              <ProductTile key={p.id} product={p} on={p.id === run?.productId} count={perProduct.get(p.id)} onPick={() => pick(p)} />
-            ))}
-          </div>
-        </div>
-      ))}
-
-      <section className="card">
-        <div className="cal-numbers">
-          <div>
-            <strong className="pack-figure">{sessionTotal.pallets}</strong>
-            <span className="small muted">{t('pack.sessionPallets')}</span>
-          </div>
-          <div>
-            <strong className="pack-figure">{sessionTotal.boxes}</strong>
-            <span className="small muted">{t('pack.sessionBoxes')}</span>
-          </div>
-        </div>
-        <p className="small muted">{t('pack.todayLine', { pallets: dayTotal.pallets, boxes: dayTotal.boxes, station: settings.station })}</p>
-        <a className="button" href={href({ name: 'protocol' })}>
-          {t('protocol.open')}
-        </a>
-      </section>
-
-      {last.length > 1 && (
-        <section className="card">
-          <h2 className="card-title">{t('pack.recent')}</h2>
-          <ul className="pack-recent">
-            {last.slice(1, 6).map((e) => (
-              <RecentRow key={e.id} entry={e} product={products.find((p) => p.id === e.productId)} now={now} onUndo={undo} />
-            ))}
-          </ul>
         </section>
-      )}
+
+        <section className="card">
+          <div className="cal-numbers">
+            <div>
+              <strong className="pack-figure">{sessionTotal.pallets}</strong>
+              <span className="small muted">{t('pack.sessionPallets')}</span>
+            </div>
+            <div>
+              <strong className="pack-figure">{sessionTotal.boxes}</strong>
+              <span className="small muted">{t('pack.sessionBoxes')}</span>
+            </div>
+          </div>
+          <p className="small muted">{t('pack.todayLine', { pallets: dayTotal.pallets, boxes: dayTotal.boxes, station: settings.station })}</p>
+          <a className="button" href={href({ name: 'protocol' })}>
+            {t('protocol.open')}
+          </a>
+        </section>
+
+        {last.length > 1 && (
+          <section className="card">
+            <h2 className="card-title">{t('pack.recent')}</h2>
+            <ul className="pack-recent">
+              {last.slice(1, 6).map((e) => (
+                <RecentRow key={e.id} entry={e} product={products.find((p) => p.id === e.productId)} now={now} onUndo={undo} />
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
 
       {boxPad && product && <QuantityPad kind="box" product={product} onClose={() => setBoxPad(false)} onDone={(n) => void register('box', n).then(() => setBoxPad(false))} />}
-      {changeWho && <ChangeWho sessionId={sessionId} workerIds={workerIds} onClose={() => setChangeWho(false)} />}
       {starting && <StartRun product={starting} onClose={() => setStarting(null)} />}
       {ending && run && product && (
         <EndRun
@@ -248,7 +241,7 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
         />
       )}
       {reporting && run && <PackDeviation run={run} workerIds={workerIds} onClose={() => setReporting(false)} />}
-    </>
+    </div>
   );
 }
 
@@ -455,32 +448,113 @@ const BOX_STEPS = [1, 5, 10];
 /** After a pallet, the pallet button rests this long (a double tap isn't two pallets). */
 const PALLET_PAUSE_MS = 1500;
 
-/** Anyone at the station can add or take off who is packing now; from then on, entries are theirs. */
-function ChangeWho({ sessionId, workerIds, onClose }: { sessionId: string; workerIds: string[]; onClose: () => void }) {
+/**
+ * Who is packing: everyone's name, the active ones highlighted. Anyone can make a name active or
+ * inactive – one tap, then "Är du säker?". Several can be active at once; what is registered is
+ * on all the active ones. The last active packer can't be taken off (finish the session instead).
+ */
+function Packers({ sessionId, workerIds, onEnd }: { sessionId: string; workerIds: string[]; onEnd: () => void }) {
   const { t } = useApp();
   const { workers } = useCatalog();
-  const [chosen, setChosen] = useState(workerIds);
-  const shown = workers.filter((w) => !w.hidden || workerIds.includes(w.id));
-  const toggle = (id: string) => setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
-  const done = async () => {
-    await db.sessions.update(sessionId, { workerIds: chosen });
-    onClose();
+  const [asking, setAsking] = useState<{ id: string; on: boolean } | null>(null);
+  const [ending, setEnding] = useState(false);
+  const active = workerIds.map((id) => workers.find((w) => w.id === id)).filter((w): w is NonNullable<typeof w> => !!w);
+  const inactive = workers.filter((w) => !w.hidden && !workerIds.includes(w.id));
+  const name = (id: string) => workers.find((w) => w.id === id)?.name ?? '?';
+  const apply = async () => {
+    if (!asking) return;
+    const next = asking.on ? [...workerIds, asking.id] : workerIds.filter((x) => x !== asking.id);
+    if (next.length) await db.sessions.update(sessionId, { workerIds: next });
+    setAsking(null);
   };
+  const lastOne = asking && !asking.on && workerIds.length === 1;
   return (
-    <Modal title={t('pack.changeWho')} onClose={onClose}>
-      <p className="small muted">{t('pack.changeWhoHint')}</p>
-      <div className="pack-names">
-        {shown.map((w) => (
-          <button key={w.id} type="button" className={`pack-name ${chosen.includes(w.id) ? 'on' : ''}`} aria-pressed={chosen.includes(w.id)} onClick={() => toggle(w.id)}>
-            {chosen.includes(w.id) && <span aria-hidden="true">✓ </span>}
-            {w.name}
+    <section className="card pack-packers">
+      <div className="cal-focus-head">
+        <strong>{t('pack.packing')}</strong>
+        <button type="button" className="link-button small" onClick={() => setEnding(true)}>
+          {t('pack.end')}
+        </button>
+      </div>
+      <div className="packer-chips" role="group" aria-label={t('pack.packing')}>
+        {active.map((w) => (
+          <button key={w.id} type="button" className="packer-chip on" aria-pressed="true" onClick={() => setAsking({ id: w.id, on: false })}>
+            ✓ {w.name}
           </button>
         ))}
       </div>
-      <button type="button" className="button button-primary pack-start" disabled={!chosen.length} onClick={() => void done()}>
-        {chosen.length ? t('pack.whoDone', { names: chosen.map((id) => workers.find((w) => w.id === id)?.name).join(', ') }) : t('pack.pickNames')}
-      </button>
-    </Modal>
+      {inactive.length > 0 && (
+        <>
+          <span className="small muted">{t('pack.notPacking')}</span>
+          <div className="packer-chips">
+            {inactive.map((w) => (
+              <button key={w.id} type="button" className="packer-chip" aria-pressed="false" onClick={() => setAsking({ id: w.id, on: true })}>
+                + {w.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {ending && (
+        <Modal title={t('pack.sure')} onClose={() => setEnding(false)}>
+          <p className="pack-pad-show">{t('pack.endConfirm')}</p>
+          <div className="confirm-buttons">
+            <button type="button" className="button confirm-no" onClick={() => setEnding(false)}>
+              {t('pack.no')}
+            </button>
+            <button
+              type="button"
+              className="button button-primary confirm-yes"
+              onClick={() => {
+                setEnding(false);
+                onEnd();
+              }}
+            >
+              {t('pack.endYes')}
+            </button>
+          </div>
+        </Modal>
+      )}
+      {asking && (
+        <Modal title={t('pack.sure')} onClose={() => setAsking(null)}>
+          {lastOne ? (
+            <>
+              <p className="pack-pad-show">{t('pack.lastPacker', { name: name(asking.id) })}</p>
+              <div className="confirm-buttons">
+                <button type="button" className="button confirm-no" onClick={() => setAsking(null)}>
+                  {t('pack.keep')}
+                </button>
+                <button
+                  type="button"
+                  className="button button-primary confirm-yes"
+                  onClick={() => {
+                    setAsking(null);
+                    setEnding(true);
+                  }}
+                >
+                  {t('pack.end')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="pack-pad-show">
+                <strong>{name(asking.id)}</strong> {t(asking.on ? 'pack.makeActive' : 'pack.makeInactive')}
+              </p>
+              <p className="small muted">{t('pack.changeWhoHint')}</p>
+              <div className="confirm-buttons">
+                <button type="button" className="button confirm-no" onClick={() => setAsking(null)}>
+                  {t('pack.no')}
+                </button>
+                <button type="button" className="button button-primary confirm-yes" onClick={() => void apply()}>
+                  {t(asking.on ? 'pack.yesAdd' : 'pack.yesRemove')}
+                </button>
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
+    </section>
   );
 }
 
