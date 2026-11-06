@@ -26,24 +26,32 @@ import { TodayView } from './ui/TodayView.tsx';
 const BETA = true;
 
 type TabIcon = 'pack' | 'truck' | 'coin' | 'stations' | 'lock' | 'today' | 'month' | 'days' | 'slips' | 'more';
-type Tab = { route: Route; icon: TabIcon; label: TextKey; match: Route['name'][]; managers?: boolean };
-// Stationer leads to the workstations (picking one puts the device in kiosk mode); the managers'
-// tabs (Produktion, Kontor) show only on a manager's device, or while admin is open; Admin itself
-// is reached from Mer. A device in kiosk mode (or Ekonomi mode) shows its own tab and Admin.
-const TABS: Tab[] = [
-  { route: { name: 'stations' }, icon: 'stations', label: 'nav.stations', match: ['stations', 'pack', 'dock', 'accounting'] },
-  { route: { name: 'today' }, icon: 'today', label: 'nav.today', match: ['today'] },
-  { route: { name: 'production' }, icon: 'month', label: 'nav.production', match: ['production'], managers: true },
-  { route: { name: 'office' }, icon: 'days', label: 'nav.office', match: ['office'], managers: true },
-  { route: { name: 'log' }, icon: 'slips', label: 'nav.log', match: ['log', 'protocol'] },
-  { route: { name: 'more' }, icon: 'more', label: 'nav.more', match: ['more', 'design', 'admin'] },
-];
+type Tab = { route: Route; icon: TabIcon; label: TextKey; match: Route['name'][] };
+// Tabs by device (Admin sets what a device is):
+// - an ordinary device: Stationer (picking one puts the device in kiosk mode), Idag, Logg, Mer;
+// - a manager's device (or open admin): Stationer as the live view of every station with the
+//   history (Idag, Logg and the protocol are reached from it), Produktion, Kontor, Ekonomi, Mer;
+// - accounting's device: Ekonomi and Mer only;
+// - a device in kiosk mode: its station and Admin.
+const T = {
+  stations: { route: { name: 'stations' }, icon: 'stations', label: 'nav.stations', match: ['stations', 'pack', 'dock', 'today', 'log', 'protocol'] },
+  today: { route: { name: 'today' }, icon: 'today', label: 'nav.today', match: ['today'] },
+  production: { route: { name: 'production' }, icon: 'month', label: 'nav.production', match: ['production'] },
+  office: { route: { name: 'office' }, icon: 'days', label: 'nav.office', match: ['office'] },
+  accounting: { route: { name: 'accounting' }, icon: 'coin', label: 'nav.accounting', match: ['accounting'] },
+  log: { route: { name: 'log' }, icon: 'slips', label: 'nav.log', match: ['log', 'protocol'] },
+  more: { route: { name: 'more' }, icon: 'more', label: 'nav.more', match: ['more', 'design', 'admin'] },
+} satisfies Record<string, Tab>;
+const ORDINARY: Tab[] = [{ ...T.stations, match: ['stations', 'pack', 'dock'] }, T.today, T.log, T.more];
+const MANAGER: Tab[] = [T.stations, T.production, T.office, T.accounting, T.more];
+const ACCOUNTING: Tab[] = [T.accounting, T.more];
+/** The pages accounting's device opens; anything else shows Ekonomi. */
+const ACCOUNTING_ROUTES: Route['name'][] = ['accounting', 'more', 'admin', 'design'];
 
 /** The view a locked device shows, and the tab it keeps. */
 const KIOSK = {
   pack: { route: { name: 'pack' } as Route, icon: 'pack' as TabIcon, label: 'pack.title' as TextKey, routes: ['pack', 'protocol'] as Route['name'][] },
   dock: { route: { name: 'dock' } as Route, icon: 'truck' as TabIcon, label: 'nav.dock' as TextKey, routes: ['dock', 'count'] as Route['name'][] },
-  accounting: { route: { name: 'accounting' } as Route, icon: 'coin' as TabIcon, label: 'nav.accounting' as TextKey, routes: ['accounting'] as Route['name'][] },
 };
 
 export function App() {
@@ -74,6 +82,7 @@ export function App() {
     closeAdmin: () => setAdmin(false),
   };
   const kiosk = settings.locked ? KIOSK[settings.lockedTo ?? 'pack'] : undefined;
+  const accountingOnly = !kiosk && !admin && !!settings.accountingDevice;
   // Sync with the server when the app is opened from it (src/sync.ts).
   const station = useRef(settings.station);
   station.current = settings.station;
@@ -83,7 +92,7 @@ export function App() {
 
   return (
     <AppContext.Provider value={value}>
-      <div className={`app ${settings.locked ? 'app-station' : ''} ${route.name === 'office' || route.name === 'accounting' || (settings.locked && settings.lockedTo === 'accounting') ? 'app-wide' : ''}`}>
+      <div className={`app ${settings.locked ? 'app-station' : ''} ${route.name === 'office' || route.name === 'accounting' || (accountingOnly && !ACCOUNTING_ROUTES.includes(route.name)) ? 'app-wide' : ''}`}>
         <header className="app-header">
           <span className="app-title">
             {t('app.title')}
@@ -94,7 +103,13 @@ export function App() {
           {admin && <span className="admin-badge">{t('admin.badge')}</span>}
         </header>
         {/* Kiosk mode: only the workstation's own pages and Admin. */}
-        {kiosk && !kiosk.routes.includes(route.name) && route.name !== 'admin' ? <Screen route={kiosk.route} /> : <Screen route={route} />}
+        {kiosk && !kiosk.routes.includes(route.name) && route.name !== 'admin' ? (
+          <Screen route={kiosk.route} />
+        ) : accountingOnly && !ACCOUNTING_ROUTES.includes(route.name) ? (
+          <Screen route={{ name: 'accounting' }} />
+        ) : (
+          <Screen route={route} />
+        )}
         <TabBar route={route} kiosk={kiosk} />
         {pin && (
           <PinPad
@@ -151,7 +166,11 @@ function TabBar({ route, kiosk }: { route: Route; kiosk?: (typeof KIOSK)[keyof t
         { route: kiosk.route, icon: kiosk.icon, label: kiosk.label, match: kiosk.routes },
         { route: { name: 'admin' }, icon: 'lock', label: 'nav.admin', match: ['admin'] },
       ]
-    : TABS.filter((tab) => manager || !tab.managers);
+    : manager
+      ? MANAGER
+      : settings.accountingDevice
+        ? ACCOUNTING.map((tab) => (tab.route.name === 'accounting' ? { ...tab, match: ['accounting', 'stations', 'today', 'log', 'protocol', 'pack', 'dock', 'count', 'production', 'office'] as Route['name'][] } : tab))
+        : ORDINARY;
   return (
     <nav className={`tabbar ${kiosk ? 'tabbar-kiosk' : ''}`}>
       {tabs.map((tab) => (

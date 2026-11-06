@@ -55,7 +55,7 @@ describe('production totals', () => {
     ]);
     const lines = csv.split('\r\n');
     expect(lines).toHaveLength(5);
-    expect(lines[1]).toContain('Märke A;;Limpa;;Pall;2;Anna, Team Natt;Pack 1;;');
+    expect(lines[1]).toContain('Märke A;;Limpa;;Pall;2;Anna, Team Natt;;Pack 1;;');
     expect(lines[4]).toContain(';fel');
   });
 });

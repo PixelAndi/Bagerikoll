@@ -11,8 +11,10 @@ export interface Settings {
   station: string;
   /** Locked to a workstation: only its view; leaving it takes the admin PIN. */
   locked: boolean;
-  /** What a locked device shows: the packing station (default), the loading dock, or Ekonomi (accounting). */
-  lockedTo?: 'pack' | 'dock' | 'accounting';
+  /** What a locked device shows: the packing station (default) or the freezer. */
+  lockedTo?: 'pack' | 'dock';
+  /** Accounting's device: shows only Ekonomi (and Mer), without the PIN. Set in Admin. */
+  accountingDevice?: boolean;
   /** The link the freezer's QR code opens on a phone (Inventera); empty = this app's own count page. */
   qrLink?: string;
   /** Seconds the QR code stays on screen (default 30). */
@@ -37,7 +39,10 @@ function load(): Settings {
   const phone = (navigator.language ?? '').toLowerCase().startsWith('sv') ? 'sv' : 'en';
   const base: Settings = { language: phone, theme: 'auto', station: 'Packning 1', locked: false };
   try {
-    return { ...base, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') };
+    const stored = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Omit<Partial<Settings>, 'lockedTo'> & { lockedTo?: string };
+    // Ekonomi used to be a kiosk station; it is now a kind of device.
+    if (stored.lockedTo === 'accounting') return { ...base, ...stored, locked: false, lockedTo: undefined, accountingDevice: true };
+    return { ...base, ...stored } as Settings;
   } catch {
     return base;
   }

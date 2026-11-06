@@ -24,7 +24,7 @@ const money = (n: number) => n.toLocaleString('sv-SE', { style: 'currency', curr
 
 export function AccountingView() {
   const { t, admin, askPin, settings } = useApp();
-  if (!admin && !settings.productionOpen && !(settings.locked && settings.lockedTo === 'accounting'))
+  if (!admin && !settings.productionOpen && !settings.accountingDevice)
     return (
       <Page title={t('nav.accounting')}>
         <Notice kind="info">{t('accounting.locked')}</Notice>

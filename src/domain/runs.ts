@@ -66,6 +66,13 @@ export function runSigners(run: Run, entries: Entry[]): string[] {
   return [...ids];
 }
 
+/** Who worked upstairs (trays to belt, quality check) during the run. */
+export function runThrowers(run: Run, entries: Entry[]): string[] {
+  const ids = new Set<string>();
+  for (const e of entries) if (e.runId === run.id && !e.voided) e.throwerIds?.forEach((id) => ids.add(id));
+  return [...ids];
+}
+
 /** What a finished row still lacks (an open run lacks nothing yet). */
 export function runGaps(run: Run): ('test' | 'labels' | 'cleaned')[] {
   if (!run.endedAt || run.cancelled) return [];

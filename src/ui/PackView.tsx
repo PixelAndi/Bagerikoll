@@ -21,7 +21,7 @@ export function PackView() {
   const { t, settings } = useApp();
   const session = useLiveQuery(() => (settings.sessionId ? db.sessions.get(settings.sessionId) : undefined), [settings.sessionId]);
   const running = session && !session.endedAt ? session : undefined;
-  return <Page title={t('pack.title')}>{running ? <Packing sessionId={running.id} workerIds={running.workerIds} /> : <StartSession />}</Page>;
+  return <Page title={t('pack.title')}>{running ? <Packing sessionId={running.id} workerIds={running.workerIds} throwerIds={running.throwerIds ?? []} /> : <StartSession />}</Page>;
 }
 
 /** Who is packing: tap the names (or the team's nickname), then start. */
@@ -29,11 +29,16 @@ function StartSession() {
   const { t, settings, save, admin } = useApp();
   const { workers, products } = useCatalog();
   const [chosen, setChosen] = useState<string[]>([]);
+  const [upstairs, setUpstairs] = useState<string[]>([]);
   const shown = workers.filter((w) => !w.hidden);
-  const toggle = (id: string) => setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
+  const toggle = (id: string) => {
+    setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
+    setUpstairs((u) => u.filter((x) => x !== id));
+  };
+  const toggleUp = (id: string) => setUpstairs((u) => (u.includes(id) ? u.filter((x) => x !== id) : [...u, id]));
   const start = async () => {
     const id = newId();
-    await db.sessions.put({ id, workerIds: chosen, startedAt: Date.now(), station: settings.station });
+    await db.sessions.put({ id, workerIds: chosen, throwerIds: upstairs.filter((x) => !chosen.includes(x)), startedAt: Date.now(), station: settings.station });
     save({ sessionId: id });
   };
   if (!shown.length || !products.some((p) => !p.hidden))
@@ -53,6 +58,22 @@ function StartSession() {
           </button>
         ))}
       </div>
+      {chosen.length > 0 && (
+        <>
+          <h2 className="pack-question">{t('upstairs.who')}</h2>
+          <p className="small muted">{t('upstairs.whoHint')}</p>
+          <div className="pack-names">
+            {shown
+              .filter((w) => !chosen.includes(w.id))
+              .map((w) => (
+                <button key={w.id} type="button" className={`pack-name pack-name-up ${upstairs.includes(w.id) ? 'on' : ''}`} aria-pressed={upstairs.includes(w.id)} onClick={() => toggleUp(w.id)}>
+                  {upstairs.includes(w.id) && <span aria-hidden="true">✓ </span>}
+                  {w.name}
+                </button>
+              ))}
+          </div>
+        </>
+      )}
       <button type="button" className="button button-primary pack-start" disabled={!chosen.length} onClick={() => void start()}>
         {chosen.length ? t('pack.start', { names: chosen.map((id) => workers.find((w) => w.id === id)?.name).join(', ') }) : t('pack.pickNames')}
       </button>
@@ -60,7 +81,7 @@ function StartSession() {
   );
 }
 
-function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: string[] }) {
+function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; workerIds: string[]; throwerIds: string[] }) {
   const { t, settings, save } = useApp();
   const { customers, products } = useCatalog();
   const today = todayLocal();
@@ -101,7 +122,7 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
       setPalletPause(true);
       setTimeout(() => setPalletPause(false), PALLET_PAUSE_MS);
     }
-    const e: Entry = { id: newId(), at: Date.now(), day: todayLocal(), kind, quantity, productId: product.id, sessionId, workerIds, station: settings.station, runId: run.id };
+    const e: Entry = { id: newId(), at: Date.now(), day: todayLocal(), kind, quantity, productId: product.id, sessionId, workerIds, throwerIds: throwerIds.length ? throwerIds : undefined, station: settings.station, runId: run.id };
     await db.entries.put(e);
     navigator.vibrate?.(kind === 'pallet' ? 80 : 40);
     setNow(Date.now());
@@ -158,7 +179,8 @@ function Packing({ sessionId, workerIds }: { sessionId: string; workerIds: strin
 
       {/* Right (landscape): who is packing, the run's other actions, changing product, totals. */}
       <div className="pack-side">
-        <Packers sessionId={sessionId} workerIds={workerIds} onEnd={() => void end()} />
+        <Packers sessionId={sessionId} workerIds={workerIds} throwerIds={throwerIds} onEnd={() => void end()} />
+        <Upstairs sessionId={sessionId} workerIds={workerIds} throwerIds={throwerIds} />
 
         {run && (
           <div className="pack-run-buttons">
@@ -510,7 +532,7 @@ const PALLET_PAUSE_MS = 1500;
  * inactive – one tap, then "Är du säker?". Several can be active at once; what is registered is
  * on all the active ones. The last active packer can't be taken off (finish the session instead).
  */
-function Packers({ sessionId, workerIds, onEnd }: { sessionId: string; workerIds: string[]; onEnd: () => void }) {
+function Packers({ sessionId, workerIds, throwerIds, onEnd }: { sessionId: string; workerIds: string[]; throwerIds: string[]; onEnd: () => void }) {
   const { t } = useApp();
   const { workers } = useCatalog();
   const [asking, setAsking] = useState<{ id: string; on: boolean } | null>(null);
@@ -521,7 +543,8 @@ function Packers({ sessionId, workerIds, onEnd }: { sessionId: string; workerIds
   const apply = async () => {
     if (!asking) return;
     const next = asking.on ? [...workerIds, asking.id] : workerIds.filter((x) => x !== asking.id);
-    if (next.length) await db.sessions.update(sessionId, { workerIds: next });
+    // Someone who comes down to pack is no longer upstairs.
+    if (next.length) await db.sessions.update(sessionId, { workerIds: next, throwerIds: throwerIds.filter((x) => x !== asking.id) });
     setAsking(null);
   };
   const lastOne = asking && !asking.on && workerIds.length === 1;
@@ -609,6 +632,71 @@ function Packers({ sessionId, workerIds, onEnd }: { sessionId: string; workerIds
               </div>
             </>
           )}
+        </Modal>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Upstairs: who moves the bread from the trays onto the belt and checks its quality. Optional –
+ * when no one is there, the packers do both. Changed like the packers: one tap, "Är du säker?".
+ */
+function Upstairs({ sessionId, workerIds, throwerIds }: { sessionId: string; workerIds: string[]; throwerIds: string[] }) {
+  const { t } = useApp();
+  const { workers } = useCatalog();
+  const [asking, setAsking] = useState<{ id: string; on: boolean } | null>(null);
+  const active = throwerIds.map((id) => workers.find((w) => w.id === id)).filter((w): w is NonNullable<typeof w> => !!w);
+  const others = workers.filter((w) => !w.hidden && !throwerIds.includes(w.id) && !workerIds.includes(w.id));
+  const name = (id: string) => workers.find((w) => w.id === id)?.name ?? '?';
+  const apply = async () => {
+    if (!asking) return;
+    await db.sessions.update(sessionId, { throwerIds: asking.on ? [...throwerIds, asking.id] : throwerIds.filter((x) => x !== asking.id) });
+    setAsking(null);
+  };
+  return (
+    <section className="card pack-packers pack-upstairs">
+      <div className="cal-focus-head">
+        <strong>{t('upstairs.title')}</strong>
+        <span className="small muted">{t('upstairs.role')}</span>
+      </div>
+      {active.length ? (
+        <div className="packer-chips" role="group" aria-label={t('upstairs.title')}>
+          {active.map((w) => (
+            <button key={w.id} type="button" className="packer-chip on" aria-pressed="true" onClick={() => setAsking({ id: w.id, on: false })}>
+              ✓ {w.name}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="small muted">{t('upstairs.none')}</p>
+      )}
+      {others.length > 0 && (
+        <details className="upstairs-more" open={!active.length}>
+          <summary className="small">{t(active.length ? 'upstairs.addMore' : 'upstairs.pick')}</summary>
+          <div className="packer-chips">
+            {others.map((w) => (
+              <button key={w.id} type="button" className="packer-chip" aria-pressed="false" onClick={() => setAsking({ id: w.id, on: true })}>
+                + {w.name}
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
+      {asking && (
+        <Modal title={t('pack.sure')} onClose={() => setAsking(null)}>
+          <p className="pack-pad-show">
+            <strong>{name(asking.id)}</strong> {t(asking.on ? 'upstairs.makeActive' : 'upstairs.makeInactive')}
+          </p>
+          <p className="small muted">{t('upstairs.changeHint')}</p>
+          <div className="confirm-buttons">
+            <button type="button" className="button confirm-no" onClick={() => setAsking(null)}>
+              {t('pack.no')}
+            </button>
+            <button type="button" className="button button-primary confirm-yes" onClick={() => void apply()}>
+              {t(asking.on ? 'pack.yesAdd' : 'pack.yesRemove')}
+            </button>
+          </div>
         </Modal>
       )}
     </section>

@@ -99,7 +99,8 @@ export function Log() {
                   {time(e.at)} · {t(e.kind === 'pallet' ? 'pack.nPallets' : 'pack.nBoxes', { n: e.quantity })} · {products.find((p) => p.id === e.productId)?.name ?? '?'}
                 </strong>
                 <span className="small">
-                  {e.workerIds.map(name).join(', ')} · {e.station}
+                  {e.workerIds.map(name).join(', ')}
+                  {e.throwerIds?.length ? ` · ${t('upstairs.short')}: ${e.throwerIds.map(name).join(', ')}` : ''} · {e.station}
                 </span>
                 {e.voided && (
                   <span className="small warn-text">

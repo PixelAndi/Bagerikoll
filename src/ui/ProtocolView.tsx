@@ -5,7 +5,7 @@ import { useCatalog } from '../data.ts';
 import { saveDataFile } from '../datafile.ts';
 import { addDays, todayLocal, type LocalDate } from '../days.ts';
 import { db } from '../db.ts';
-import { batchRange, runCount, runGaps, runSigners, testGaps } from '../domain/runs.ts';
+import { batchRange, runCount, runGaps, runSigners, runThrowers, testGaps } from '../domain/runs.ts';
 import type { DetectorTest, Run } from '../domain/types.ts';
 import { href } from '../router.ts';
 import { Notice, Page } from './common.tsx';
@@ -121,6 +121,12 @@ export function ProtocolView({ day: asked }: { day?: string }) {
                     <td>{r.cleaned ? <span className="proto-ok">✓ {clock(r.cleaned.at)}</span> : gaps.includes('cleaned') && <span className="proto-bad">{t('protocol.missing')}</span>}</td>
                     <td>
                       {runSigners(r, entries).map(name).join(', ')}
+                      {runThrowers(r, entries).length > 0 && (
+                        <span className="muted">
+                          <br />
+                          {t('upstairs.short')}: {runThrowers(r, entries).map(name).join(', ')}
+                        </span>
+                      )}
                       {late.map((at) => (
                         <span key={at} className="proto-bad">
                           <br />

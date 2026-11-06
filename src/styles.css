@@ -1933,3 +1933,13 @@ input[type='checkbox'] {
 .sync-ok { border-color: var(--cal-worked-strong); color: var(--cal-worked-strong); }
 .sync-offline, .sync-error { border-color: var(--cal-missing-strong); background: var(--cal-missing); }
 .sync-login { border-color: var(--error); background: var(--error-soft); }
+
+/* Managers' view of the stations. */
+.overview-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 12px; }
+.overview-grid .card { margin: 0; }
+.overview-people { line-height: 1.6; }
+.overview-day { display: flex; flex-direction: column; gap: 2px; color: inherit; text-decoration: none; width: 100%; }
+/* Upstairs at the belt (packing station). */
+.pack-upstairs { border-style: dashed; }
+.upstairs-more summary { cursor: pointer; color: var(--accent); margin: 6px 0; }
+.pack-name-up.on { background: var(--cal-komp, var(--accent)); }

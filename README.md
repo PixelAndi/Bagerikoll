@@ -8,6 +8,10 @@ important numbers big, how things stand in coloured squares and chips, details f
 
 - **Who is packing.** Workers tap their names (or a team's nickname) to start a session;
   several can pack together. Every pallet or box registered is tied to everyone in the session.
+- **Upstairs at the belt (optional).** Whoever moves the bread from the trays onto the belt and
+  checks its quality is picked under the packers when the session starts, or changed on the
+  station ("Är du säker?"). None chosen means the packer does both. Each registration keeps who
+  was upstairs; the protocol, the Logg and the CSV show it.
 - **Who is packing can change.** Every name is on the station: the active packers filled,
   the rest outlined. Anyone can tap a name to add or take it off – then "Är du säker?" with
   big Ja/Nej buttons. Several can pack at once; every entry is on all the active packers. The
@@ -64,15 +68,18 @@ to confirm; keep the paper form alongside until they have.
 
 ## Navigation by device
 
-- **Ordinary devices** show Stationer, Idag, Logg and Mer. **Admin** is reached from Mer (PIN).
-- **Stationer** picks what the device is for: **Packetering** or **Lastkaj** opens it and puts the
-  device in **kiosk mode** – only that page and the **Admin** tab, where a manager leaves kiosk
-  mode with the PIN. **Ekonomi** works the same way (the PIN is needed to start it, as it shows
-  prices) – the accounting department's device shows only Ekonomi and Admin.
-- **A manager's device** (set in Admin: a manager's phone, the office computer) also shows
-  Produktion and Kontor, open without the PIN. Other devices don't show them at all.
-- **A device locked to a workstation** – the packing station or the loading dock – shows only
-  that, with no tabs; "Lås upp" takes the PIN.
+Admin sets what each device is (**Den här enheten är**):
+
+- **An ordinary device** shows Stationer, Idag, Logg and Mer. **Admin** is reached from Mer (PIN).
+  **Stationer** makes it a workstation: **Packetering** or **Fryslager** opens and the device goes
+  into **kiosk mode** – only that page and the **Admin** tab, where the PIN leaves kiosk mode.
+- **A manager's device** (a manager's phone, the office computer; or any device with admin open)
+  shows Stationer, Produktion, Kontor, Ekonomi and Mer, without the PIN. Its **Stationer** is the
+  live view of every station: who packs, who is upstairs at the belt, the product, the count,
+  the detector test and the last registration; the freezer's loaders, driver and the delivery
+  being loaded; today's totals with links to the day's protocol, Idag and the Logg; and the last
+  two weeks, each day leading to its protocol (who packed what). As fresh as the stations' sync.
+- **Accounting's device** shows only **Ekonomi** (and Mer), without the PIN.
 
 ## The order book (Kontor and Ekonomi)
 

@@ -54,11 +54,19 @@ the customer's billing company (`Customer.billedBy` → a brand), CSV. The owner
 book lists per day the customers' orders with pallets per product, the day's pallets at the
 top, and the week's pallets per billing company.
 
-**Navigation by device (owner's decision):** ordinary devices show Stationer, Idag, Logg, Mer
-(Admin is under Mer); a manager's device (`settings.productionOpen`) or open admin also shows
-Produktion and Kontor. Stationer (`ui/StationsView.tsx`) puts the device in kiosk mode
-(`settings.locked` + `lockedTo`: 'pack' | 'dock' | 'accounting'; Ekonomi needs the PIN to start):
-only that page and the Admin tab, where "Lämna kioskläget" (PIN) unlocks. **Ekonomi**
+**Navigation by device (owner's decision; tabs in `App.tsx`, the kind set in Admin):** an ordinary
+device shows Stationer, Idag, Logg, Mer (Admin under Mer); its Stationer (`ui/StationsView.tsx`)
+puts the device in kiosk mode (`settings.locked` + `lockedTo`: 'pack' | 'dock'): only that page
+and the Admin tab, where "Lämna kioskläget" (PIN) unlocks. A manager's device
+(`settings.productionOpen`) or open admin shows Stationer, Produktion, Kontor, Ekonomi, Mer; its
+Stationer is the live view (`ui/OverviewView.tsx`, `domain/overview.ts` + tests: open sessions
+and runs per station, stale after 14 h, quiet after 30 min; the freezer; today; the last two
+weeks → protocol per day), with Idag/Logg reached from there and kiosk set-up folded below.
+Accounting's device (`settings.accountingDevice`) shows only Ekonomi and Mer – Ekonomi is a tab,
+not a station (an old 'accounting' kiosk setting is migrated in `settings.ts`). **Upstairs at the
+belt** (trays to belt + quality check): `Session.throwerIds`, optional (a packer may do both),
+copied onto each `Entry.throwerIds`; `runThrowers`; shown on the station (`Upstairs` in
+PackView), the protocol, the Logg and the CSV. **Ekonomi**
 (`ui/AccountingView.tsx`, `domain/accounting.ts`, `domain/accountingSheet.ts`, `src/xlsx.ts` – a
 dependency-free .xlsx writer; tests): the week complete when every order is loaded; bills what the
 dock reported (`Order.delivered`); each line's calculation shown (`lineCalc`, `explain`);

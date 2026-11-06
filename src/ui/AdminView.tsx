@@ -316,7 +316,7 @@ function Station() {
       {settings.locked && (
         <div className="kiosk-leave">
           <p>
-            <strong>{t('admin.inKiosk', { station: t(settings.lockedTo === 'dock' ? 'nav.dock' : settings.lockedTo === 'accounting' ? 'nav.accounting' : 'pack.title') })}</strong>
+            <strong>{t('admin.inKiosk', { station: t(settings.lockedTo === 'dock' ? 'nav.dock' : 'pack.title') })}</strong>
           </p>
           <button
             type="button"
@@ -334,28 +334,35 @@ function Station() {
       <Field label={t('admin.stationName')} hint={t('admin.stationNameHint')}>
         <input type="text" defaultValue={settings.station} onBlur={(e) => e.target.value.trim() && save({ station: e.target.value.trim() })} />
       </Field>
-      <label className="check-row">
-        <input type="checkbox" checked={!!settings.productionOpen} onChange={(e) => save({ productionOpen: e.target.checked })} />
-        <span>
-          <strong>{t('admin.managerPhone')}</strong>
-          <br />
-          <span className="small muted">{t('admin.managerPhoneHint')}</span>
-        </span>
-      </label>
+      {/* What this device is: an ordinary one (the stations, Idag, Logg), a manager's, or accounting's. */}
+      <span className="field-label">{t('admin.deviceKind')}</span>
+      {(['ordinary', 'manager', 'accounting'] as const).map((kind) => {
+        const on = kind === 'manager' ? !!settings.productionOpen : kind === 'accounting' ? !settings.productionOpen && !!settings.accountingDevice : !settings.productionOpen && !settings.accountingDevice;
+        return (
+          <label key={kind} className="check-row">
+            <input type="radio" name="device-kind" checked={on} onChange={() => save({ productionOpen: kind === 'manager', accountingDevice: kind === 'accounting' })} />
+            <span>
+              <strong>{t(`admin.device.${kind}`)}</strong>
+              <br />
+              <span className="small muted">{t(`admin.device.${kind}Hint`)}</span>
+            </span>
+          </label>
+        );
+      })}
       <p className="small muted">{t('admin.lockHint')}</p>
       <div className="button-row">
-        {(['pack', 'dock', 'accounting'] as const).map((to) => (
+        {(['pack', 'dock'] as const).map((to) => (
           <button
             key={to}
             type="button"
             className="button button-primary"
             onClick={() => {
-              save({ locked: true, lockedTo: to, productionOpen: false });
+              save({ locked: true, lockedTo: to, productionOpen: false, accountingDevice: false });
               closeAdmin();
               location.hash = `#/${to}`;
             }}
           >
-            🔒 {t(to === 'dock' ? 'admin.lockDock' : to === 'accounting' ? 'admin.lockAccounting' : 'admin.lock')}
+            🔒 {t(to === 'dock' ? 'admin.lockDock' : 'admin.lock')}
           </button>
         ))}
       </div>

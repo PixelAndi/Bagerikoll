@@ -71,6 +71,11 @@ export interface Session {
   workerIds: string[];
   /** The forklift driver (loading dock only; one at a time). */
   driverId?: string;
+  /**
+   * Packing only: who works upstairs, moving the bread from the trays onto the belt and checking
+   * its quality. Optional – a packer sometimes does both.
+   */
+  throwerIds?: string[];
   /** The delivery being loaded now (loading dock only). */
   loadingOrderId?: string;
   startedAt: number;
@@ -92,6 +97,8 @@ export interface Entry {
   productId: string;
   sessionId: string;
   workerIds: string[];
+  /** Who was upstairs (trays to belt, quality check) when it was registered; none = the packers did both. */
+  throwerIds?: string[];
   station: string;
   /** The run (one product at a time on the line) it was packed in. */
   runId?: string;

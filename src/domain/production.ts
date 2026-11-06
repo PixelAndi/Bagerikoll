@@ -96,7 +96,7 @@ export function toCsv(entries: Entry[], products: Product[], brands: Brand[], wo
   const c = new Map(customers.map((x) => [x.id, x.name]));
   const w = new Map(workers.map((x) => [x.id, x.name]));
   const cell = (s: string) => (/[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
-  const rows = [['Tid', 'Dag', 'Varumärke', 'Kund', 'Produkt', 'Artikelnr', 'Typ', 'Antal', 'Packare', 'Station', 'Ångrad', 'Orsak']];
+  const rows = [['Tid', 'Dag', 'Varumärke', 'Kund', 'Produkt', 'Artikelnr', 'Typ', 'Antal', 'Packare', 'Uppe vid bandet', 'Station', 'Ångrad', 'Orsak']];
   for (const e of [...entries].sort((x, y) => x.at - y.at)) {
     const prod = p.get(e.productId);
     rows.push([
@@ -109,6 +109,7 @@ export function toCsv(entries: Entry[], products: Product[], brands: Brand[], wo
       e.kind === 'pallet' ? 'Pall' : 'Kartong',
       String(e.quantity),
       e.workerIds.map((id) => w.get(id) ?? '?').join(', '),
+      (e.throwerIds ?? []).map((id) => w.get(id) ?? '?').join(', '),
       e.station,
       e.voided ? new Date(e.voided.at).toLocaleString('sv-SE') : '',
       e.voided?.reason ?? '',

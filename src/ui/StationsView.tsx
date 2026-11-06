@@ -1,28 +1,48 @@
 import { useState } from 'react';
 import { useApp } from '../app-context.ts';
 import type { TextKey } from '../i18n.ts';
-import { Icon, Modal, Page } from './common.tsx';
+import { Fold, Icon, Modal, Page } from './common.tsx';
+import { OverviewView } from './OverviewView.tsx';
 
-// Stationer: pick what this device is for. A workstation (Packetering, Lastkaj) opens and the
-// device goes into kiosk mode – only that page and the Admin tab, where a manager unlocks it with
-// the PIN. Ekonomi (accounting) works the same way, but takes the PIN to start, as it shows prices.
+// Stationer. On a manager's device (or with admin open): what every station is doing now and
+// the days before (OverviewView); making this device a station is folded away below. On any
+// other device: pick what this device is for – a workstation (Packetering, Fryslager) opens and
+// the device goes into kiosk mode, only that page and the Admin tab, where the PIN unlocks it.
+// (Ekonomi is not a station: it is a tab for managers, and accounting's device shows only it.)
 
-const STATIONS: { to: 'pack' | 'dock' | 'accounting'; icon: 'pack' | 'truck' | 'coin'; title: TextKey; hint: TextKey; pin?: boolean }[] = [
+const STATIONS: { to: 'pack' | 'dock'; icon: 'pack' | 'truck'; title: TextKey; hint: TextKey }[] = [
   { to: 'pack', icon: 'pack', title: 'pack.title', hint: 'stations.packHint' },
   { to: 'dock', icon: 'truck', title: 'nav.dock', hint: 'stations.dockHint' },
-  { to: 'accounting', icon: 'coin', title: 'nav.accounting', hint: 'stations.accountingHint', pin: true },
 ];
 
 export function StationsView() {
-  const { t, save, askPin, closeAdmin } = useApp();
+  const { t, admin, settings } = useApp();
+  if (admin || settings.productionOpen)
+    return (
+      <Page title={t('stations.title')}>
+        <OverviewView />
+        <Fold title={t('stations.makeStation')} sub={t('stations.makeStationSub')}>
+          <StationPicker />
+        </Fold>
+      </Page>
+    );
+  return (
+    <Page title={t('stations.title')}>
+      <StationPicker />
+    </Page>
+  );
+}
+
+function StationPicker() {
+  const { t, save, closeAdmin } = useApp();
   const [asking, setAsking] = useState<(typeof STATIONS)[number] | null>(null);
-  const lock = (to: 'pack' | 'dock' | 'accounting') => {
-    save({ locked: true, lockedTo: to, productionOpen: false });
+  const lock = (to: 'pack' | 'dock') => {
+    save({ locked: true, lockedTo: to, productionOpen: false, accountingDevice: false });
     closeAdmin();
     location.hash = `#/${to}`;
   };
   return (
-    <Page title={t('stations.title')}>
+    <>
       <p className="muted">{t('stations.intro')}</p>
       <div className="station-cards">
         {STATIONS.map((s) => (
@@ -30,7 +50,6 @@ export function StationsView() {
             <Icon name={s.icon} />
             <strong>{t(s.title)}</strong>
             <span className="small muted">{t(s.hint)}</span>
-            {s.pin && <span className="small">🔒 {t('stations.needsPin')}</span>}
           </button>
         ))}
       </div>
@@ -48,8 +67,7 @@ export function StationsView() {
               onClick={() => {
                 const s = asking;
                 setAsking(null);
-                if (s.pin) askPin(() => lock(s.to));
-                else lock(s.to);
+                lock(s.to);
               }}
             >
               {t('stations.yes')}
@@ -57,6 +75,6 @@ export function StationsView() {
           </div>
         </Modal>
       )}
-    </Page>
+    </>
   );
 }
