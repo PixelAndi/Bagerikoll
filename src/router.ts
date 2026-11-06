@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 export type Route =
   | { name: 'stations' }
   | { name: 'pack' }
+  | { name: 'upstairs' }
   | { name: 'dock' }
   | { name: 'count' }
   | { name: 'accounting' }
@@ -19,7 +20,7 @@ export type Route =
   | { name: 'more' }
   | { name: 'design' };
 
-const SIMPLE = ['pack', 'dock', 'count', 'accounting', 'today', 'production', 'office', 'log', 'admin', 'more', 'design'] as const;
+const SIMPLE = ['pack', 'upstairs', 'dock', 'count', 'accounting', 'today', 'production', 'office', 'log', 'admin', 'more', 'design'] as const;
 
 export function parse(hash: string): Route {
   const [name, arg] = hash.replace(/^#\/?/, '').split('/');

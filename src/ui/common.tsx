@@ -111,6 +111,8 @@ export function Spinner({ label }: { label?: string }) {
 }
 
 const icons = {
+  // An arrow up over a belt: upstairs at the belt.
+  up: 'M12 2l6 6h-4v6h-4V8H6l6-6ZM3 17h18v2H3v-2Zm2 3h2v2H5v-2Zm12 0h2v2h-2v-2Z',
   // A box on a pallet: packing.
   pack: 'M6 3h12v11H6V3Zm2 2v2h8V5H8ZM3 16h18v2h-2v3h-2v-3H7v3H5v-3H3v-2Z',
   days: 'M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7Zm-2 8h14v10H5V10Zm2 2v2h2v-2H7Zm4 0v2h2v-2h-2Zm4 0v2h2v-2h-2Z',

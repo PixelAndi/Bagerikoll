@@ -2,10 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { useApp } from '../app-context.ts';
 import { useCatalog } from '../data.ts';
-import { todayLocal } from '../days.ts';
+import { addDays, todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
 import { deliveredDiffers, deliveredLines } from '../domain/accounting.ts';
 import { nextWorkday } from '../domain/obs.ts';
+import { extraInFreezer, halfCount, openHalves } from '../domain/halves.ts';
 import { checkOf, deliveredFromChecks, deliveries, loadLines, loadProgress, shortLoaded, withCheck, type Delivery } from '../domain/dock.ts';
 import { orderTotals } from '../domain/office.ts';
 import { lineBoxesPerPallet, stackPlan } from '../domain/pallet.ts';
@@ -14,6 +15,7 @@ import { Field, Modal, Notice, Page } from './common.tsx';
 import { Stepper } from './OrderEditor.tsx';
 import { PalletBadge } from './PalletIcon.tsx';
 import { QrCode } from './QrCode.tsx';
+import { NeedsName } from './DeviceName.tsx';
 
 // Lastkaj, the loading dock (a tablet in kiosk mode): "Lastas just nu" – the delivery being
 // loaded, its customer and pallets big, each product ticked off or reported missing – and below it
@@ -80,6 +82,7 @@ export function DockView() {
             </span>
           </section>
           {running ? <DockCrew session={running} /> : <StartDock />}
+          <InFreezer session={running} />
           <section className="card">
             <div className="cal-focus-head">
               <strong>{t('dock.today')}</strong>
@@ -152,7 +155,8 @@ function StartDock() {
             </button>
           ))}
       </div>
-      <button type="button" className="button button-primary pack-start" disabled={!loaders.length && !driver} onClick={() => void start()}>
+      {!settings.station && <NeedsName />}
+      <button type="button" className="button button-primary pack-start" disabled={(!loaders.length && !driver) || !settings.station} onClick={() => void start()}>
         {t('dock.start')}
       </button>
     </section>
@@ -728,5 +732,56 @@ function CountQr({ onClose }: { onClose: () => void }) {
         {t('count.qrClose')}
       </button>
     </Modal>
+  );
+}
+
+/**
+ * Beside the orders in the freezer: extra boxes (packed beyond an order, noted when the run
+ * ended) until someone marks them used, and half boxes waiting to be filled at the packing
+ * station with the next production of the product.
+ */
+function InFreezer({ session }: { session?: Session }) {
+  const { t } = useApp();
+  const { products, customers } = useCatalog();
+  const since = addDays(todayLocal(), -60);
+  const runs = useLiveQuery(() => db.runs.where('day').aboveOrEqual(since).toArray(), [since]) ?? [];
+  const halves = openHalves(useLiveQuery(() => db.halfBoxes.toArray(), []) ?? []);
+  const extra = extraInFreezer(runs);
+  if (!extra.length && !halves.length) return null;
+  const name = (id: string) => products.find((p) => p.id === id)?.name ?? '?';
+  const day = (d: string) => new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`));
+  const halfByProduct = [...new Set(halves.map((h) => h.productId))].map((id) => ({ id, n: halfCount(halves.filter((h) => h.productId === id)) }));
+  return (
+    <section className="card cal-check">
+      <strong>{t('freezer.extraTitle')}</strong>
+      {extra.length > 0 && (
+        <ul className="product-rows">
+          {extra.map((r) => (
+            <li key={r.id}>
+              <span>
+                <strong>{t('freezer.extraLine', { n: r.surplusBoxes ?? 0, product: name(r.productId) })}</strong>
+                <br />
+                <span className="small muted">{[day(r.day), customers.find((c) => c.id === r.customerId)?.name].filter(Boolean).join(' · ')}</span>
+              </span>
+              <button type="button" className="button" onClick={() => void db.runs.update(r.id, { surplusTaken: { at: Date.now(), workerIds: session?.workerIds ?? [] } })}>
+                {t('freezer.taken')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {halfByProduct.length > 0 && (
+        <>
+          <span className="small muted">{t('freezer.halvesTitle')}</span>
+          <ul className="product-rows">
+            {halfByProduct.map((h) => (
+              <li key={h.id}>
+                <span>{t('freezer.halfLine', { n: h.n, product: name(h.id) })}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
   );
 }

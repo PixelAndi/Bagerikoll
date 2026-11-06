@@ -6,11 +6,13 @@ import { todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
 import { byProduct, canWorkerUndo, groupByCustomer, sortProducts, total } from '../domain/production.ts';
 import { lineBoxesPerPallet, palletLayers } from '../domain/pallet.ts';
-import { batchRange, canPack, runCount, testPassed, testState } from '../domain/runs.ts';
-import type { DetectorTest, Entry, EntryKind, Product, Run } from '../domain/types.ts';
+import { batchRange, canPack, runCount, runTarget, testPassed, testState } from '../domain/runs.ts';
+import { halfCount, openHalves } from '../domain/halves.ts';
+import type { DetectorTest, Entry, EntryKind, HalfBox, Product, Run } from '../domain/types.ts';
 import { href } from '../router.ts';
 import { Field, Modal, Notice, Page } from './common.tsx';
 import { PalletBadge, PalletIcon } from './PalletIcon.tsx';
+import { NeedsName } from './DeviceName.tsx';
 
 // The packing station: who is packing, which product (under its customer), a big pallet button
 // and box buttons in steps.
@@ -74,7 +76,8 @@ function StartSession() {
           </div>
         </>
       )}
-      <button type="button" className="button button-primary pack-start" disabled={!chosen.length} onClick={() => void start()}>
+      {!settings.station && <NeedsName />}
+      <button type="button" className="button button-primary pack-start" disabled={!chosen.length || !settings.station} onClick={() => void start()}>
         {chosen.length ? t('pack.start', { names: chosen.map((id) => workers.find((w) => w.id === id)?.name).join(', ') }) : t('pack.pickNames')}
       </button>
     </>
@@ -92,6 +95,9 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
   const runEntries = useLiveQuery(() => (run ? db.entries.where('runId').equals(run.id).toArray() : []), [run?.id]) ?? [];
   const [filter, setFilter] = useState<string>();
   const [boxPad, setBoxPad] = useState(false);
+  const [palletPad, setPalletPad] = useState(false);
+  const [halfPad, setHalfPad] = useState(false);
+  const halves = useLiveQuery(() => (run ? db.halfBoxes.where('productId').equals(run.productId).toArray() : []), [run?.productId]) ?? [];
   const [starting, setStarting] = useState<Product | null>(null);
   const [ending, setEnding] = useState<{ then?: Product } | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -113,8 +119,10 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
   const last = [...mine].sort((a, b) => b.at - a.at);
   const open = run ? canPack(run, now) : false;
 
-  const register = async (kind: EntryKind, quantity: number) => {
+  const register = async (kind: EntryKind, quantity: number, boxesOnPallet?: number) => {
     if (!run || !product || quantity <= 0 || !canPack(run, Date.now())) return;
+    // Spread on a set number of pallets: each pallet's boxes are counted first.
+    if (kind === 'pallet' && run.spreadPallets !== undefined && boxesOnPallet === undefined) return setPalletPad(true);
     // Pallets are counted one by one: a second tap straight after is taken as a slip, not a pallet.
     if (kind === 'pallet') {
       if (Date.now() - lastPallet.current < PALLET_PAUSE_MS) return;
@@ -122,10 +130,24 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
       setPalletPause(true);
       setTimeout(() => setPalletPause(false), PALLET_PAUSE_MS);
     }
-    const e: Entry = { id: newId(), at: Date.now(), day: todayLocal(), kind, quantity, productId: product.id, sessionId, workerIds, throwerIds: throwerIds.length ? throwerIds : undefined, station: settings.station, runId: run.id };
+    const e: Entry = { id: newId(), at: Date.now(), day: todayLocal(), kind, quantity, boxesOnPallet, productId: product.id, sessionId, workerIds, throwerIds: throwerIds.length ? throwerIds : undefined, station: settings.station, runId: run.id };
     await db.entries.put(e);
     navigator.vibrate?.(kind === 'pallet' ? 80 : 40);
     setNow(Date.now());
+  };
+  const addHalves = async (n: number) => {
+    if (!run || n <= 0) return;
+    await db.halfBoxes.put({ id: newId(), productId: run.productId, quantity: n, day: todayLocal(), at: Date.now(), runId: run.id, station: settings.station, workerIds });
+    setHalfPad(false);
+  };
+  // Half boxes from earlier, filled with this production: they count as boxes of this run.
+  const fillHalves = async (list: HalfBox[]) => {
+    if (!run || !list.length || !canPack(run, Date.now())) return;
+    const at = Date.now();
+    await db.transaction('rw', db.entries, db.halfBoxes, async () => {
+      await db.entries.put({ id: newId(), at, day: todayLocal(), kind: 'box', quantity: halfCount(list), productId: run.productId, sessionId, workerIds, throwerIds: throwerIds.length ? throwerIds : undefined, station: settings.station, runId: run.id });
+      for (const h of list) await db.halfBoxes.update(h.id, { filled: { at, runId: run.id, workerIds } });
+    });
   };
   const undo = (e: Entry) => db.entries.update(e.id, { voided: { at: Date.now(), by: 'worker', reason: t('pack.undoReason') } });
   const end = async () => {
@@ -160,9 +182,14 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
                     </button>
                   ))}
                 </div>
-                <button type="button" className="button pack-other-boxes" onClick={() => setBoxPad(true)}>
-                  {t('pack.otherBoxes')}
-                </button>
+                <div className="pack-extra-buttons">
+                  <button type="button" className="button pack-other-boxes" onClick={() => setBoxPad(true)}>
+                    {t('pack.otherBoxes')}
+                  </button>
+                  <button type="button" className="button pack-other-boxes pack-half-button" onClick={() => setHalfPad(true)}>
+                    ½ {t('half.button')}
+                  </button>
+                </div>
               </>
             ) : (
               <DetectorTestCard run={run} product={product} workerIds={workerIds} now={now} />
@@ -174,13 +201,14 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
             <p className="small muted">{t('run.pickProductHint')}</p>
           </section>
         )}
+        {run && product && <HalvesCard run={run} product={product} halves={halves} open={open} now={now} onFill={(l) => void fillHalves(l)} />}
         {last[0] && <LastEntry entry={last[0]} product={products.find((p) => p.id === last[0].productId)} now={now} onUndo={undo} />}
       </div>
 
       {/* Right (landscape): who is packing, the run's other actions, changing product, totals. */}
       <div className="pack-side">
         <Packers sessionId={sessionId} workerIds={workerIds} throwerIds={throwerIds} onEnd={() => void end()} />
-        <Upstairs sessionId={sessionId} workerIds={workerIds} throwerIds={throwerIds} />
+        <UpstairsLink throwerIds={throwerIds} />
 
         {run && (
           <div className="pack-run-buttons">
@@ -249,6 +277,21 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
       </div>
 
       {boxPad && product && <QuantityPad kind="box" product={product} onClose={() => setBoxPad(false)} onDone={(n) => void register('box', n).then(() => setBoxPad(false))} />}
+      {palletPad && product && run && (
+        <QuantityPad
+          kind="pallet"
+          product={product}
+          title={t('spread.palletTitle', { n: runCount(run, runEntries, product).pallets + 1, of: run.spreadPallets ?? 0 })}
+          hint={t('spread.palletHint')}
+          unit={t('pack.boxesWord')}
+          onClose={() => setPalletPad(false)}
+          onDone={(n) => {
+            setPalletPad(false);
+            void register('pallet', 1, n);
+          }}
+        />
+      )}
+      {halfPad && product && <QuantityPad kind="box" product={product} title={t('half.title')} hint={t('half.hint')} unit={t('half.word')} onClose={() => setHalfPad(false)} onDone={(n) => void addHalves(n)} />}
       {starting && <StartRun product={starting} onClose={() => setStarting(null)} />}
       {ending && run && product && (
         <EndRun
@@ -278,7 +321,8 @@ function RunHead({ run, product, entries, now }: { run: Run; product: Product; e
   const c = runCount(run, entries, product);
   const state = testState(run, now);
   const range = batchRange(c.totalBoxes);
-  const per = run.boxesPerPallet ?? product.boxesPerPallet;
+  const target = runTarget(run, c);
+  const per = run.spreadPallets !== undefined ? undefined : (run.boxesPerPallet ?? product.boxesPerPallet);
   return (
     <div className="run-head">
       <div className="run-head-text">
@@ -291,7 +335,9 @@ function RunHead({ run, product, entries, now }: { run: Run; product: Product; e
         <span className="cal-chip">{t('run.count', { pallets: c.pallets, boxes: c.boxes })}</span>
         <span className={`cal-chip ${range ? '' : 'cal-chip-warn'}`}>{range ? t('run.batch', { range }) : t('run.noBoxesPerPallet')}</span>
         {state.kind === 'ok' && <span className={`cal-chip ${state.soon ? 'cal-chip-warn' : 'cal-chip-ok'}`}>{t(state.soon ? 'run.testSoon' : 'run.testOk', { time: clock(state.dueAt) })}</span>}
+        {target?.kind === 'boxes' && (target.extra > 0 ? <span className="cal-chip cal-chip-warn">{t('target.extra', { n: target.extra })}</span> : <span className="cal-chip">{t('target.left', { n: target.left, of: target.target })}</span>)}
       </div>
+      {target?.kind === 'spread' && <p className="spread-order">{t('spread.instruction', { n: target.pallets, left: target.left })}</p>}
       </div>
       {/* How high to stack: the boxes per pallet for this order, as a picture. */}
       {per ? (
@@ -383,7 +429,19 @@ function StartRun({ product, onClose }: { product: Product; onClose: () => void 
   const start = async () => {
     const id = newId();
     const line = chosenOrder?.lines.find((l) => l.productId === product.id);
+    // What earlier runs packed for the same order and product: this run packs what is left.
+    let target: Pick<Run, 'spreadPallets' | 'targetBoxes'> = {};
+    if (chosenOrder && line) {
+      const earlier = await db.runs.filter((r) => r.orderId === chosenOrder.id && r.productId === product.id && !r.cancelled).toArray();
+      const ids = new Set(earlier.map((r) => r.id));
+      const packed = earlier.length ? await db.entries.filter((e) => !!e.runId && ids.has(e.runId)).toArray() : [];
+      const counts = earlier.map((r) => runCount(r, packed, product));
+      const per = lineBoxesPerPallet(line, product);
+      if (line.spreadPallets) target = { spreadPallets: Math.max(0, line.pallets - counts.reduce((n, c) => n + c.pallets, 0)) };
+      else if (per) target = { targetBoxes: Math.max(0, line.pallets * per + line.boxes - counts.reduce((n, c) => n + (c.totalBoxes ?? 0), 0)) };
+    }
     await db.runs.put({
+      ...target,
       id,
       day: todayLocal(),
       station: settings.station,
@@ -416,8 +474,14 @@ function StartRun({ product, onClose }: { product: Product; onClose: () => void 
                     {o.orderNumber && <span className="muted"> #{o.orderNumber}</span>}
                     <br />
                     <span className="small">{t('prod.nPallets', { n: line.pallets })}</span>
+                    {line.spreadPallets && (
+                      <>
+                        <br />
+                        <strong className="small spread-order-inline">{t('spread.short', { n: line.pallets })}</strong>
+                      </>
+                    )}
                   </span>
-                  {per && <PalletBadge boxes={per} perLayer={product.boxesPerLayer} label={t('pallet.short', { boxes: per })} unit={0.4} />}
+                  {per && !line.spreadPallets && <PalletBadge boxes={per} perLayer={product.boxesPerLayer} label={t('pallet.short', { boxes: per })} unit={0.4} />}
                 </button>
               );
             })}
@@ -454,10 +518,11 @@ function EndRun({ run, product, entries, workerIds, onClose, onEnded }: { run: R
   const [labels, setLabels] = useState(false);
   const [cleaned, setCleaned] = useState(false);
   const c = runCount(run, entries, product);
+  const target = runTarget(run, c);
   const nothing = !c.pallets && !c.boxes && !run.tests.length;
   const finish = async () => {
     const at = Date.now();
-    await db.runs.update(run.id, { endedAt: at, labels: { at, workerIds }, cleaned: { at, workerIds } });
+    await db.runs.update(run.id, { endedAt: at, labels: { at, workerIds }, cleaned: { at, workerIds }, surplusBoxes: target?.kind === 'boxes' && target.extra ? target.extra : undefined });
     save({ runId: undefined });
     onEnded();
   };
@@ -472,6 +537,9 @@ function EndRun({ run, product, entries, workerIds, onClose, onEnded }: { run: R
         <strong>{t('run.count', { pallets: c.pallets, boxes: c.boxes })}</strong>
         {batchRange(c.totalBoxes) && <span className="muted"> · {t('run.batch', { range: batchRange(c.totalBoxes)! })}</span>}
       </p>
+      {target?.kind === 'boxes' && target.extra > 0 && <Notice kind="warn">{t('target.extraEnd', { n: target.extra })}</Notice>}
+      {target?.kind === 'boxes' && target.left > 0 && <Notice kind="info">{t('target.shortEnd', { n: target.left })}</Notice>}
+      {target?.kind === 'spread' && c.pallets !== target.pallets && <Notice kind="info">{t('spread.endDiffers', { n: c.pallets, of: target.pallets })}</Notice>}
       <label className="check-row big-check">
         <input type="checkbox" checked={labels} onChange={(e) => setLabels(e.target.checked)} />
         <span>
@@ -642,7 +710,7 @@ function Packers({ sessionId, workerIds, throwerIds, onEnd }: { sessionId: strin
  * Upstairs: who moves the bread from the trays onto the belt and checks its quality. Optional –
  * when no one is there, the packers do both. Changed like the packers: one tap, "Är du säker?".
  */
-function Upstairs({ sessionId, workerIds, throwerIds }: { sessionId: string; workerIds: string[]; throwerIds: string[] }) {
+export function Upstairs({ sessionId, workerIds, throwerIds }: { sessionId: string; workerIds: string[]; throwerIds: string[] }) {
   const { t } = useApp();
   const { workers } = useCatalog();
   const [asking, setAsking] = useState<{ id: string; on: boolean } | null>(null);
@@ -703,6 +771,60 @@ function Upstairs({ sessionId, workerIds, throwerIds }: { sessionId: string; wor
   );
 }
 
+/** On the packing page: who is upstairs, and the way to the Uppe tab where it is changed. */
+function UpstairsLink({ throwerIds }: { throwerIds: string[] }) {
+  const { t } = useApp();
+  const { workers } = useCatalog();
+  const names = throwerIds.map((id) => workers.find((w) => w.id === id)?.name ?? '?');
+  return (
+    <a className="card upstairs-link" href={href({ name: 'upstairs' })}>
+      <span>
+        <span className="small muted">{t('upstairs.title')}</span>
+        <br />
+        <strong>{names.length ? names.join(', ') : t('upstairs.noneShort')}</strong>
+      </span>
+      <span className="upstairs-link-go">{t('upstairs.open')} ›</span>
+    </a>
+  );
+}
+
+/**
+ * Half boxes: those registered in this run (undo for 2 minutes), and those waiting from earlier
+ * productions of the product – filled now, they count as boxes of this run.
+ */
+function HalvesCard({ run, product, halves, open, now, onFill }: { run: Run; product: Product; halves: HalfBox[]; open: boolean; now: number; onFill: (list: HalfBox[]) => void }) {
+  const { t } = useApp();
+  const waiting = openHalves(halves).filter((h) => h.runId !== run.id);
+  const mine = openHalves(halves).filter((h) => h.runId === run.id);
+  if (!waiting.length && !mine.length) return null;
+  const day = (d: string) => new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`));
+  return (
+    <section className="card cal-check halves-card">
+      {waiting.length > 0 && (
+        <>
+          <strong>{t('half.waiting', { n: halfCount(waiting), product: product.name })}</strong>
+          <p className="small muted">{t('half.waitingFrom', { days: [...new Set(waiting.map((h) => day(h.day)))].join(', ') })}</p>
+          <button type="button" className="button button-primary" disabled={!open} onClick={() => onFill(waiting)}>
+            {t('half.fill', { n: halfCount(waiting) })}
+          </button>
+        </>
+      )}
+      {mine.length > 0 && (
+        <p className="small">
+          {t('half.thisRun', { n: halfCount(mine) })}{' '}
+          {mine
+            .filter((h) => now - h.at < 2 * 60 * 1000)
+            .map((h) => (
+              <button key={h.id} type="button" className="link-button" onClick={() => void db.halfBoxes.update(h.id, { voided: { at: Date.now(), by: 'worker' } })}>
+                {t('pack.undo')} ({h.quantity})
+              </button>
+            ))}
+        </p>
+      )}
+    </section>
+  );
+}
+
 function ProductTile({ product, on, count, onPick }: { product: Product; on: boolean; count?: { pallets: number; boxes: number }; onPick: () => void }) {
   const { t } = useApp();
   return (
@@ -751,15 +873,16 @@ function RecentRow({ entry, product, now, onUndo }: { entry: Entry; product?: Pr
 }
 
 /** Another number than one: a big number pad, the result shown before it is saved. */
-function QuantityPad({ kind, product, onClose, onDone }: { kind: EntryKind; product: Product; onClose: () => void; onDone: (n: number) => void }) {
+function QuantityPad({ kind, product, title, hint, unit, onClose, onDone }: { kind: EntryKind; product: Product; title?: string; hint?: string; unit?: string; onClose: () => void; onDone: (n: number) => void }) {
   const { t } = useApp();
   const [text, setText] = useState('');
   const n = Number(text || '0');
   const press = (k: string) => setText((s) => (k === '⌫' ? s.slice(0, -1) : (s + k).replace(/^0+/, '').slice(0, 3)));
   return (
-    <Modal title={t(kind === 'pallet' ? 'pack.otherPallets' : 'pack.otherBoxes')} onClose={onClose}>
+    <Modal title={title ?? t(kind === 'pallet' ? 'pack.otherPallets' : 'pack.otherBoxes')} onClose={onClose}>
+      {hint && <p className="small muted">{hint}</p>}
       <p className="pack-pad-show">
-        <strong>{text || '0'}</strong> {t(kind === 'pallet' ? 'pack.palletsWord' : 'pack.boxesWord')} · {product.name}
+        <strong>{text || '0'}</strong> {unit ?? t(kind === 'pallet' ? 'pack.palletsWord' : 'pack.boxesWord')} · {product.name}
       </p>
       <div className="pack-pad">
         {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((k, i) =>
@@ -773,7 +896,7 @@ function QuantityPad({ kind, product, onClose, onDone }: { kind: EntryKind; prod
         )}
       </div>
       <button type="button" className="button button-primary pack-start" disabled={n <= 0} onClick={() => onDone(n)}>
-        {t('pack.register', { n, what: t(kind === 'pallet' ? 'pack.palletsWord' : 'pack.boxesWord') })}
+        {t('pack.register', { n, what: unit ?? t(kind === 'pallet' ? 'pack.palletsWord' : 'pack.boxesWord') })}
       </button>
     </Modal>
   );

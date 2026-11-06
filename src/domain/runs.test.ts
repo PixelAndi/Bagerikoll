@@ -72,3 +72,25 @@ describe('the protocol row', () => {
     expect(runGaps(run({ tests: [] }))).toEqual([]);
   });
 });
+
+describe('runs for an order: extra boxes and set pallets', async () => {
+  const { runCount, runTarget } = await import('./runs.ts');
+  const base = { id: 'r', day: '2030-01-07', station: 'S', productId: 'p', startedAt: 0, tests: [] };
+  const e = (kind: 'pallet' | 'box', quantity: number, boxesOnPallet?: number) => ({ id: Math.random().toString(), at: 1, day: '2030-01-07', kind, quantity, productId: 'p', sessionId: 's', workerIds: [], station: 'S', runId: 'r', boxesOnPallet });
+  it('notes boxes beyond the order as extra (2 pallets of 36 = 72; 73 packed = 1 extra)', () => {
+    const run = { ...base, boxesPerPallet: 36, targetBoxes: 72 };
+    const c = runCount(run, [e('pallet', 1), e('pallet', 1), e('box', 1)]);
+    expect(c.totalBoxes).toBe(73);
+    expect(runTarget(run, c)).toEqual({ kind: 'boxes', target: 72, left: 0, extra: 1 });
+    expect(runTarget(run, runCount(run, [e('pallet', 1)]))).toMatchObject({ left: 36, extra: 0 });
+  });
+  it('spread on a set number of pallets: boxes counted per pallet, no extra', () => {
+    const run = { ...base, boxesPerPallet: 36, spreadPallets: 2 };
+    const c = runCount(run, [e('pallet', 1, 40), e('pallet', 1, 39)]);
+    expect(c).toEqual({ pallets: 2, boxes: 0, totalBoxes: 79 });
+    expect(runTarget(run, c)).toEqual({ kind: 'spread', pallets: 2, left: 0 });
+  });
+  it('a run without an order has no target', () => {
+    expect(runTarget(base, runCount(base, [e('box', 3)]))).toBeUndefined();
+  });
+});

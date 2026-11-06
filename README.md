@@ -12,6 +12,15 @@ important numbers big, how things stand in coloured squares and chips, details f
   checks its quality is picked under the packers when the session starts, or changed on the
   station ("Är du säker?"). None chosen means the packer does both. Each registration keeps who
   was upstairs; the protocol, the Logg and the CSV show it.
+- **Uppe** is its own tab at the packing station, run from downstairs: who is upstairs, and
+  quality problems they call down (burnt, pale, size, shape, damaged, other), saved as quality
+  deviations on the product on the line.
+- **Orders:** with fixed boxes per pallet the station shows what is left of the order, and boxes
+  beyond it as extra – noted at the end of the run and listed in Fryslager until used. A manager
+  can instead set an order line to "all on N pallets, however many boxes"; the station then asks
+  for the boxes on each pallet.
+- **Halva kartonger:** boxes without enough bread are registered, wait in the freezer, and are
+  filled with the next production of the product (counted as boxes of that run).
 - **Who is packing can change.** Every name is on the station: the active packers filled,
   the rest outlined. Anyone can tap a name to add or take it off – then "Är du säker?" with
   big Ja/Nej buttons. Several can pack at once; every entry is on all the active packers. The

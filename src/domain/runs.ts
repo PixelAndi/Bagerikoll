@@ -42,14 +42,34 @@ export interface RunCount {
 export function runCount(run: Run, entries: Entry[], product?: Product): RunCount {
   let pallets = 0;
   let boxes = 0;
+  // Pallets whose boxes were counted one by one (a run spread on a set number of pallets).
+  let counted = 0;
+  let countedBoxes = 0;
   for (const e of entries)
     if (e.runId === run.id && !e.voided) {
-      if (e.kind === 'pallet') pallets += e.quantity;
-      else boxes += e.quantity;
+      if (e.kind === 'pallet') {
+        pallets += e.quantity;
+        if (e.boxesOnPallet !== undefined) {
+          counted += e.quantity;
+          countedBoxes += e.boxesOnPallet * e.quantity;
+        }
+      } else boxes += e.quantity;
     }
   // The run's own count (set from the order it is packed for), else the product's.
   const per = run.boxesPerPallet ?? product?.boxesPerPallet;
-  return { pallets, boxes, totalBoxes: per ? pallets * per + boxes : pallets ? undefined : boxes };
+  const rest = pallets - counted;
+  return { pallets, boxes, totalBoxes: rest === 0 ? countedBoxes + boxes : per ? countedBoxes + rest * per + boxes : undefined };
+}
+
+/**
+ * Against the order the run packs for: with fixed boxes per pallet, the boxes beyond the order
+ * (extra, to the freezer) and those still to pack; spread on a set number of pallets, the pallets
+ * still to go. Nothing for a run without an order.
+ */
+export function runTarget(run: Run, count: RunCount): { kind: 'boxes'; target: number; left: number; extra: number } | { kind: 'spread'; pallets: number; left: number } | undefined {
+  if (run.spreadPallets !== undefined) return { kind: 'spread', pallets: run.spreadPallets, left: Math.max(0, run.spreadPallets - count.pallets) };
+  if (run.targetBoxes === undefined || count.totalBoxes === undefined) return undefined;
+  return { kind: 'boxes', target: run.targetBoxes, left: Math.max(0, run.targetBoxes - count.totalBoxes), extra: Math.max(0, count.totalBoxes - run.targetBoxes) };
 }
 
 /** The batch: box numbers 01 to the last box, as on the paper form. */

@@ -8,7 +8,7 @@ import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** The tables the app syncs (the same as DATA_TABLES in src/db.ts). */
-export const TABLES = ['workers', 'brands', 'customers', 'products', 'sessions', 'entries', 'orders', 'doughs', 'deviations', 'stockCounts', 'runs', 'obs'];
+export const TABLES = ['workers', 'brands', 'customers', 'products', 'sessions', 'entries', 'orders', 'doughs', 'deviations', 'stockCounts', 'runs', 'obs', 'halfBoxes'];
 /** The most records sent back in one answer; the device asks again for the rest. */
 export const PAGE = 2000;
 

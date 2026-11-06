@@ -7,7 +7,7 @@ import { applyTheme, type Theme } from './theme.ts';
 export interface Settings {
   language: Language;
   theme: Theme;
-  /** This device's name in the log, e.g. "Packning 1". */
+  /** This device's name in the log, e.g. "Packning 1" – empty until given (the header asks for it). */
   station: string;
   /** Locked to a workstation: only its view; leaving it takes the admin PIN. */
   locked: boolean;
@@ -36,8 +36,8 @@ export interface Settings {
 const KEY = 'bagerikoll-settings';
 
 function load(): Settings {
-  const phone = (navigator.language ?? '').toLowerCase().startsWith('sv') ? 'sv' : 'en';
-  const base: Settings = { language: phone, theme: 'auto', station: 'Packning 1', locked: false };
+  // Swedish unless chosen otherwise (Mer → Språk); no device name until one is given.
+  const base: Settings = { language: 'sv', theme: 'auto', station: '', locked: false };
   try {
     const stored = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Omit<Partial<Settings>, 'lockedTo'> & { lockedTo?: string };
     // Ekonomi used to be a kiosk station; it is now a kind of device.

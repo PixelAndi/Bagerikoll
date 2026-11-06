@@ -65,8 +65,20 @@ weeks → protocol per day), with Idag/Logg reached from there and kiosk set-up 
 Accounting's device (`settings.accountingDevice`) shows only Ekonomi and Mer – Ekonomi is a tab,
 not a station (an old 'accounting' kiosk setting is migrated in `settings.ts`). **Upstairs at the
 belt** (trays to belt + quality check): `Session.throwerIds`, optional (a packer may do both),
-copied onto each `Entry.throwerIds`; `runThrowers`; shown on the station (`Upstairs` in
-PackView), the protocol, the Logg and the CSV. **Ekonomi**
+copied onto each `Entry.throwerIds`; `runThrowers`; its own kiosk tab **Uppe** (`ui/UpstairsView.tsx`,
+route `upstairs`; no device or phone upstairs – run from downstairs): who is upstairs, and quality
+deviations (kind `quality`, reasons + note, tied to the run, signed by those upstairs); the pack page
+shows only a link. The name is open: the bakery says "kasta bröd", the owner dislikes it.
+**Orders at the station:** an order line is either fixed boxes per pallet – the run gets
+`targetBoxes` (what is left of the order) and boxes beyond it are extra, saved as
+`Run.surplusBoxes` at the end and listed in Fryslager until "Använd" (`surplusTaken`) – or, the
+manager's instruction (`OrderLine.spreadPallets`, set in the order book's pallet picker), "all on N
+pallets, however many boxes": the run gets `spreadPallets` and each pallet asks for its boxes
+(`Entry.boxesOnPallet`, counted in `runCount`). `runTarget` in runs.ts. **Half boxes** (table
+`halfBoxes`, db v5, synced; `domain/halves.ts`): registered at the station, waiting in the freezer,
+filled with the next run of the product (one tap counts them as boxes of that run); shown in
+Fryslager and the protocol. **Device name**: none by default; the header asks for it
+(`ui/DeviceName.tsx`), sessions need it. Default language Swedish. **Ekonomi**
 (`ui/AccountingView.tsx`, `domain/accounting.ts`, `domain/accountingSheet.ts`, `src/xlsx.ts` – a
 dependency-free .xlsx writer; tests): the week complete when every order is loaded; bills what the
 dock reported (`Order.delivered`); each line's calculation shown (`lineCalc`, `explain`);

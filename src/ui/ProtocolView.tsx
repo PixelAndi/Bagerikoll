@@ -34,7 +34,8 @@ export function ProtocolView({ day: asked }: { day?: string }) {
   const runs = data?.runs;
   const entries = data?.entries ?? [];
   const loose = useLiveQuery(() => db.entries.where('day').equals(day).filter((e) => !e.runId && !e.voided).count(), [day]) ?? 0;
-  const deviations = (useLiveQuery(() => db.deviations.where('day').equals(day).toArray(), [day]) ?? []).filter((x) => !x.removed && (x.kind === 'detector' || x.kind === 'packing')).sort((a, b) => a.at - b.at);
+  const deviations = (useLiveQuery(() => db.deviations.where('day').equals(day).toArray(), [day]) ?? []).filter((x) => !x.removed && (x.kind === 'detector' || x.kind === 'packing' || x.kind === 'quality')).sort((a, b) => a.at - b.at);
+  const halves = (useLiveQuery(() => db.halfBoxes.where('day').equals(day).toArray(), [day]) ?? []).filter((h) => !h.voided).sort((a, b) => a.at - b.at);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30000);
@@ -112,7 +113,11 @@ export function ProtocolView({ day: asked }: { day?: string }) {
                       {r.cancelled && <span className="muted"> ({t('protocol.cancelled')})</span>}
                     </td>
                     <td>{batchRange(c.totalBoxes) ?? <span className="proto-bad">{t('protocol.noBatch')}</span>}</td>
-                    <td>{t('run.count', { pallets: c.pallets, boxes: c.boxes })}</td>
+                    <td>
+                      {t('run.count', { pallets: c.pallets, boxes: c.boxes })}
+                      {r.spreadPallets !== undefined && <span className="muted"><br />{t('spread.short', { n: r.spreadPallets })}</span>}
+                      {r.surplusBoxes ? <span className="muted"><br />{t('target.extra', { n: r.surplusBoxes })}</span> : null}
+                    </td>
                     <td>{customers.find((x) => x.id === (r.customerId ?? p?.customerIds?.[0]))?.name ?? ''}</td>
                     <td className="proto-tests">{tests(r, 'ferro')}</td>
                     <td className="proto-tests">{tests(r, 'nonFerro')}</td>
@@ -160,6 +165,22 @@ export function ProtocolView({ day: asked }: { day?: string }) {
             </li>
           ))}
         </ul>
+      )}
+      {halves.length > 0 && (
+        <>
+          <h2 className="card-title">{t('half.title')}</h2>
+          <ul className="product-rows">
+            {halves.map((h) => (
+              <li key={h.id}>
+                <span>
+                  {clock(h.at)} · {t('freezer.halfLine', { n: h.quantity, product: products.find((p) => p.id === h.productId)?.name ?? '?' })}
+                  <span className="muted"> – {h.workerIds.map(name).join(', ')}</span>
+                  {h.filled && <span className="muted"> · {t('protocol.halfFilled', { time: new Date(h.filled.at).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }) })}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
       {loose > 0 && <Notice kind="warn">{t('protocol.loose', { n: loose })}</Notice>}
       <p className="small muted">{t('protocol.footer', { when: new Date(now).toLocaleString('sv-SE') })}</p>

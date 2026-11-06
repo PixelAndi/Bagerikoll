@@ -113,7 +113,7 @@ function PackingCard({ p, entries, now }: { p: PackingNow; entries: import('../d
   return (
     <section className={`card ${p.quiet ? '' : 'cal-focus'} overview-card`}>
       <div className="cal-focus-head">
-        <strong>📦 {p.station}</strong>
+        <strong>📦 {p.station || t('device.unnamed')}</strong>
         <span className={`cal-chip ${p.quiet ? 'cal-chip-warn' : 'cal-chip-ok'}`}>{p.quiet ? t('overview.quiet', { time: clock(p.lastAt) }) : t('overview.active')}</span>
       </div>
       {p.session && (
@@ -158,7 +158,7 @@ function DockCard({ d }: { d: DockNow }) {
   return (
     <section className="card cal-focus overview-card">
       <div className="cal-focus-head">
-        <strong>🚚 {d.station}</strong>
+        <strong>🚚 {d.station || t('device.unnamed')}</strong>
         <span className="cal-chip cal-chip-ok">{t('overview.active')}</span>
       </div>
       <p className="overview-people">

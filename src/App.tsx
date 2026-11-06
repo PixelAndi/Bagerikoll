@@ -6,6 +6,7 @@ import { href, useRoute, type Route } from './router.ts';
 import { useSettings } from './settings.ts';
 import { startSync } from './sync.ts';
 import { SyncBadge } from './ui/SyncBadge.tsx';
+import { DeviceName } from './ui/DeviceName.tsx';
 import { AdminView } from './ui/AdminView.tsx';
 import { Icon } from './ui/common.tsx';
 import { DesignView } from './ui/DesignView.tsx';
@@ -15,6 +16,7 @@ import { DockView } from './ui/DockView.tsx';
 import { StationsView } from './ui/StationsView.tsx';
 import { MoreView } from './ui/MoreView.tsx';
 import { PackView } from './ui/PackView.tsx';
+import { UpstairsView } from './ui/UpstairsView.tsx';
 import { LogView } from './ui/ProductionLog.tsx';
 import { PinPad } from './ui/PinPad.tsx';
 import { OfficeView } from './ui/OfficeView.tsx';
@@ -25,7 +27,7 @@ import { TodayView } from './ui/TodayView.tsx';
 // While the app is tested, a "Beta" badge shows in the header (as in Lönekoll).
 const BETA = true;
 
-type TabIcon = 'pack' | 'truck' | 'coin' | 'stations' | 'lock' | 'today' | 'month' | 'days' | 'slips' | 'more';
+type TabIcon = 'up' | 'pack' | 'truck' | 'coin' | 'stations' | 'lock' | 'today' | 'month' | 'days' | 'slips' | 'more';
 type Tab = { route: Route; icon: TabIcon; label: TextKey; match: Route['name'][] };
 // Tabs by device (Admin sets what a device is):
 // - an ordinary device: Stationer (picking one puts the device in kiosk mode), Idag, Logg, Mer;
@@ -34,7 +36,7 @@ type Tab = { route: Route; icon: TabIcon; label: TextKey; match: Route['name'][]
 // - accounting's device: Ekonomi and Mer only;
 // - a device in kiosk mode: its station and Admin.
 const T = {
-  stations: { route: { name: 'stations' }, icon: 'stations', label: 'nav.stations', match: ['stations', 'pack', 'dock', 'today', 'log', 'protocol'] },
+  stations: { route: { name: 'stations' }, icon: 'stations', label: 'nav.stations', match: ['stations', 'pack', 'upstairs', 'dock', 'today', 'log', 'protocol'] },
   today: { route: { name: 'today' }, icon: 'today', label: 'nav.today', match: ['today'] },
   production: { route: { name: 'production' }, icon: 'month', label: 'nav.production', match: ['production'] },
   office: { route: { name: 'office' }, icon: 'days', label: 'nav.office', match: ['office'] },
@@ -42,16 +44,23 @@ const T = {
   log: { route: { name: 'log' }, icon: 'slips', label: 'nav.log', match: ['log', 'protocol'] },
   more: { route: { name: 'more' }, icon: 'more', label: 'nav.more', match: ['more', 'design', 'admin'] },
 } satisfies Record<string, Tab>;
-const ORDINARY: Tab[] = [{ ...T.stations, match: ['stations', 'pack', 'dock'] }, T.today, T.log, T.more];
+const ORDINARY: Tab[] = [{ ...T.stations, match: ['stations', 'pack', 'upstairs', 'dock'] }, T.today, T.log, T.more];
 const MANAGER: Tab[] = [T.stations, T.production, T.office, T.accounting, T.more];
 const ACCOUNTING: Tab[] = [T.accounting, T.more];
 /** The pages accounting's device opens; anything else shows Ekonomi. */
 const ACCOUNTING_ROUTES: Route['name'][] = ['accounting', 'more', 'admin', 'design'];
 
-/** The view a locked device shows, and the tab it keeps. */
-const KIOSK = {
-  pack: { route: { name: 'pack' } as Route, icon: 'pack' as TabIcon, label: 'pack.title' as TextKey, routes: ['pack', 'protocol'] as Route['name'][] },
-  dock: { route: { name: 'dock' } as Route, icon: 'truck' as TabIcon, label: 'nav.dock' as TextKey, routes: ['dock', 'count'] as Route['name'][] },
+/** The view a locked device shows, and its tabs (Admin is added). The packing station has a separate Uppe tab. */
+const KIOSK: Record<'pack' | 'dock', { route: Route; routes: Route['name'][]; tabs: Tab[] }> = {
+  pack: {
+    route: { name: 'pack' },
+    routes: ['pack', 'protocol', 'upstairs'],
+    tabs: [
+      { route: { name: 'pack' }, icon: 'pack', label: 'pack.title', match: ['pack', 'protocol'] },
+      { route: { name: 'upstairs' }, icon: 'up', label: 'upstairs.tab', match: ['upstairs'] },
+    ],
+  },
+  dock: { route: { name: 'dock' }, routes: ['dock', 'count'], tabs: [{ route: { name: 'dock' }, icon: 'truck', label: 'nav.dock', match: ['dock', 'count'] }] },
 };
 
 export function App() {
@@ -98,7 +107,7 @@ export function App() {
             {t('app.title')}
             {BETA && <span className="beta-badge">{t('beta.badge')}</span>}
           </span>
-          <span className="app-tagline">{settings.station}</span>
+          <DeviceName />
           <SyncBadge />
           {admin && <span className="admin-badge">{t('admin.badge')}</span>}
         </header>
@@ -133,6 +142,8 @@ function Screen({ route }: { route: Route }) {
       return <TodayView />;
     case 'pack':
       return <PackView />;
+    case 'upstairs':
+      return <UpstairsView />;
     case 'dock':
       return <DockView />;
     case 'accounting':
@@ -163,7 +174,7 @@ function TabBar({ route, kiosk }: { route: Route; kiosk?: (typeof KIOSK)[keyof t
   const manager = admin || !!settings.productionOpen;
   const tabs: Tab[] = kiosk
     ? [
-        { route: kiosk.route, icon: kiosk.icon, label: kiosk.label, match: kiosk.routes },
+        ...kiosk.tabs,
         { route: { name: 'admin' }, icon: 'lock', label: 'nav.admin', match: ['admin'] },
       ]
     : manager

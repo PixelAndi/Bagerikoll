@@ -97,6 +97,8 @@ export interface Entry {
   productId: string;
   sessionId: string;
   workerIds: string[];
+  /** A pallet in a run spread on a set number of pallets: how many boxes are on it. */
+  boxesOnPallet?: number;
   /** Who was upstairs (trays to belt, quality check) when it was registered; none = the packers did both. */
   throwerIds?: string[];
   station: string;
@@ -130,6 +132,12 @@ export interface OrderLine {
   plannedAt?: number;
   /** Boxes per pallet for this order, set while planning (e.g. by where it is delivered); else the product's. */
   boxesPerPallet?: number;
+  /**
+   * The manager's instruction: pack all of it on `pallets` pallets, however many boxes come out
+   * (boxes per pallet then vary; the packers say how many are on each pallet). Otherwise the boxes
+   * per pallet are fixed and boxes beyond the order go to the freezer as extra.
+   */
+  spreadPallets?: boolean;
 }
 
 /** A product checked at the loading dock: what was loaded of it, and by whom. */
@@ -196,7 +204,7 @@ export interface DoughCount {
  * - loading: something wrong when loading (wrong count, damage, missing …).
  * A day with a low-yield or other deviation is left out of the product's usual yield.
  */
-export type DeviationKind = 'scrapped' | 'lowYield' | 'other' | 'detector' | 'packing' | 'loading';
+export type DeviationKind = 'scrapped' | 'lowYield' | 'other' | 'detector' | 'packing' | 'loading' | 'quality';
 
 export interface Deviation {
   id: string;
@@ -272,6 +280,14 @@ export interface Run {
   orderId?: string;
   /** Boxes per pallet in this run (from the order); else the product's. */
   boxesPerPallet?: number;
+  /** From the order: all of it on this many pallets, however many boxes (see OrderLine.spreadPallets). */
+  spreadPallets?: number;
+  /** From the order: the boxes still to pack for it when the run started (fixed boxes per pallet). Boxes beyond are extra. */
+  targetBoxes?: number;
+  /** Boxes packed beyond the order, put in the freezer (saved when the run ends). */
+  surplusBoxes?: number;
+  /** The extra boxes have been used or sent (marked in Fryslager). */
+  surplusTaken?: { at: number; workerIds: string[] };
   startedAt: number;
   endedAt?: number;
   tests: DetectorTest[];
@@ -303,5 +319,26 @@ export interface ObsRequest {
   status: 'requested' | 'planned' | 'done' | 'refused' | 'notAllowed';
   decidedAt?: number;
   note?: string;
+  updatedAt?: number;
+}
+
+/**
+ * Half boxes ("halva kartonger"): boxes without enough bread in them, registered at the packing
+ * station, kept in the freezer and filled with the next production of the product – then they
+ * count as boxes of that run.
+ */
+export interface HalfBox {
+  id: string;
+  productId: string;
+  quantity: number;
+  day: LocalDate;
+  at: number;
+  runId?: string;
+  station: string;
+  workerIds: string[];
+  /** Filled and counted as boxes in a later run. */
+  filled?: { at: number; runId: string; workerIds: string[] };
+  /** Registered by mistake (undone within the undo time, or by admin): kept, counted nowhere. */
+  voided?: { at: number; by: 'worker' | 'admin' };
   updatedAt?: number;
 }

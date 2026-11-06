@@ -280,8 +280,8 @@ function OrderCard({ order, mode, duplicate, onEdit, onMove, allOpen }: { order:
                 {ch.delivered && <span className="book-mark book-mark-dock">🚚 {t('book.delivered', { what: qty(t, ch.delivered) })}</span>}
                 {!office && <span className="book-amount">{amount === undefined ? t('office.noPriceShort') : money(amount)}</span>}
                 {office && p && l.pallets > 0 && (
-                  <button type="button" className={`bpp-chip ${lineBoxesPerPallet(l, p) ? '' : 'bpp-missing'} ${l.boxesPerPallet && l.boxesPerPallet !== p.boxesPerPallet ? 'bpp-set' : ''}`} disabled={order.cancelled} onClick={() => setPicking(l.productId)}>
-                    {lineBoxesPerPallet(l, p) ? t('pallet.short', { boxes: lineBoxesPerPallet(l, p)! }) : t('pallet.unknown')}
+                  <button type="button" className={`bpp-chip ${l.spreadPallets || lineBoxesPerPallet(l, p) ? '' : 'bpp-missing'} ${l.spreadPallets || (l.boxesPerPallet && l.boxesPerPallet !== p.boxesPerPallet) ? 'bpp-set' : ''}`} disabled={order.cancelled} onClick={() => setPicking(l.productId)}>
+                    {l.spreadPallets ? t('spread.short', { n: l.pallets }) : lineBoxesPerPallet(l, p) ? t('pallet.short', { boxes: lineBoxesPerPallet(l, p)! }) : t('pallet.unknown')}
                   </button>
                 )}
               </li>
@@ -341,16 +341,28 @@ function BoxCountPicker({ order, product, onClose }: { order: Order; product: Pr
   const choose = async (n: number | undefined) => {
     // The product's own standard is stored as "not set", so a later change of the standard applies.
     const value = n && n !== product.boxesPerPallet ? n : undefined;
-    await db.orders.update(order.id, { lines: order.lines.map((l) => (l.productId === product.id ? { ...l, boxesPerPallet: value } : l)) });
+    await db.orders.update(order.id, { lines: order.lines.map((l) => (l.productId === product.id ? { ...l, boxesPerPallet: value, spreadPallets: undefined } : l)) });
+    onClose();
+  };
+  // The manager's instruction: all of it on the order's pallets, however many boxes come out.
+  const spread = async () => {
+    await db.orders.update(order.id, { lines: order.lines.map((l) => (l.productId === product.id ? { ...l, spreadPallets: true } : l)) });
     onClose();
   };
   const customN = Number(custom);
   return (
     <Modal title={t('pallet.pickTitle', { product: product.name })} onClose={onClose}>
       <p className="small muted">{t('pallet.pickHint')}</p>
+      {line.pallets > 0 && (
+        <button type="button" className={`card spread-choice ${line.spreadPallets ? 'on' : ''}`} aria-pressed={!!line.spreadPallets} onClick={() => void spread()}>
+          <strong>{t('spread.choose', { n: line.pallets })}</strong>
+          <span className="small muted">{t('spread.chooseHint')}</span>
+        </button>
+      )}
+      <p className="small muted">{t('spread.orFixed')}</p>
       <div className="bpp-options">
         {options.map((n) => (
-          <button key={n} type="button" className={`bpp-option ${n === current ? 'on' : ''}`} aria-pressed={n === current} onClick={() => void choose(n)}>
+          <button key={n} type="button" className={`bpp-option ${n === current && !line.spreadPallets ? 'on' : ''}`} aria-pressed={n === current && !line.spreadPallets} onClick={() => void choose(n)}>
             <PalletBadge boxes={n} perLayer={product.boxesPerLayer} label={t('pallet.label', { boxes: n, layers: palletLayers(n, product.boxesPerLayer).layers })} unit={0.55} />
             {n === product.boxesPerPallet && <span className="small muted">{t('pallet.standard')}</span>}
           </button>
