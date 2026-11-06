@@ -46,9 +46,14 @@ export function DesignView() {
       <h2 className="issues-heading">{t('design.pallets')}</h2>
       {/* PalletIcon / PalletBadge: the pallet at its height – 4 large boxes a layer unless the product says otherwise. */}
       <div className="design-pallets">
-        {[8, 12, 16, 20, 24, 28, 30, 32, 36, 40].map((n) => (
+        {Array.from({ length: 40 }, (_, i) => i + 1).map((n) => (
           <PalletBadge key={n} boxes={n} label={t('pallet.label', { boxes: n, layers: palletLayers(n).layers })} unit={0.8} />
         ))}
+      </div>
+      {/* Two full pallets of 20 on top of each other: how most are stored and shipped. */}
+      <h3 className="prod-sub">{t('pallet.stackedTitle')}</h3>
+      <div className="design-pallets-stacked">
+        <PalletBadge boxes={20} stacked={2} label={t('pallet.stacked', { boxes: 20 })} unit={1} />
       </div>
 
       <h2 className="issues-heading">{t('design.chips')}</h2>
