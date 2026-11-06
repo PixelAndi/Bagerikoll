@@ -1619,8 +1619,10 @@ input[type='checkbox'] {
   .app { max-width: none; padding: 0; }
   .proto-scroll { overflow: visible; }
   .proto-table { min-width: 0; font-size: 8.5pt; background: #fff; }
-  .proto-table th { background: #eee; }
+  .proto-table th { background: #fff; border-bottom: 1px solid #000; }
   .proto-ok { color: #000; }
+  .office-subtotal td { background: #fff; border-top: 1px solid #000; font-weight: 700; }
+  .margin-bar i { display: none; }
 }
 
 /* The station's two halves: what is packed now (main) and everything around it (side). Stacked on
@@ -1715,6 +1717,35 @@ input[type='checkbox'] {
   .print-day { break-inside: auto; }
   .print-day h2 { break-after: avoid; }
 }
+
+/* The week to print (Ekonomi): days side by side, black on white, hairline rules, no fills. */
+.print-sub-title { font-size: 1.15rem; margin: 18px 0 8px; }
+.print-status { margin: 4px 0 10px; }
+.week-sheet { color: #000; margin-bottom: 14px; }
+.week-cols { display: grid; grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr)); gap: 0; }
+.week-day { padding: 0 8px; border-left: 1px solid #bbb; break-inside: auto; }
+.week-day:first-child { border-left: none; padding-left: 0; }
+.week-day-head { display: flex; flex-direction: column; gap: 1px; border-bottom: 1.5px solid #000; padding-bottom: 3px; margin-bottom: 4px; }
+.week-day-name { font-weight: 700; font-size: 10pt; }
+.week-day-name::first-letter { text-transform: uppercase; }
+.week-day-tot { font-size: 8.5pt; color: #222; font-variant-numeric: tabular-nums; }
+.week-empty { color: #666; font-size: 8pt; }
+.week-order { break-inside: avoid; padding: 4px 0; border-bottom: 1px solid #d7d7d7; }
+.week-order-head { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+.week-cust { font-weight: 700; font-size: 9pt; min-width: 0; }
+.week-mark { font-size: 6.5pt; font-weight: 700; letter-spacing: .08em; border: 1px solid #000; border-radius: 2px; padding: 0 3px; margin-left: 4px; white-space: nowrap; }
+.week-ono { font-weight: 400; color: #555; margin-left: 4px; font-size: 8pt; }
+.week-state { font-size: 7.5pt; white-space: nowrap; color: #000; }
+.week-state.week-open { color: #555; font-style: italic; }
+.week-line { display: flex; justify-content: space-between; gap: 6px; font-size: 8.5pt; line-height: 1.35; }
+.week-prod { min-width: 0; overflow-wrap: anywhere; }
+.week-qty { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.week-order-foot { display: flex; justify-content: space-between; gap: 6px; font-size: 8pt; font-weight: 600; color: #333; margin-top: 2px; }
+.week-total { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; border-top: 2px solid #000; margin-top: 8px; padding-top: 6px; font-weight: 700; font-size: 10pt; }
+.week-total-billers { display: flex; flex-wrap: wrap; gap: 4px 14px; font-variant-numeric: tabular-nums; }
+.week-total-billers strong { border-left: 1px solid #000; padding-left: 14px; }
+@media screen { .week-cols { font-size: 13px; } .week-day { min-height: 200px; } }
+@media print { .week-order { padding: 2.5px 0; } .week-day { padding: 0 6px; } }
 
 /* The pallet picture (PalletIcon): kraft boxes with white labels on an EUR pallet. */
 .pallet-icon { display: block; overflow: visible; }

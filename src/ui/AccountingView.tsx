@@ -4,10 +4,10 @@ import { useApp } from '../app-context.ts';
 import { useCatalog } from '../data.ts';
 import { addDays, isoWeek, mondayOf, todayLocal, type LocalDate } from '../days.ts';
 import { db } from '../db.ts';
-import { accountingRows, deliveredOrders, profitBy, profitOf, weekStatus, type AccountingRow, type Profit } from '../domain/accounting.ts';
-import { accountingWorkbook, explain } from '../domain/accountingSheet.ts';
-import { accountingSummary, costOn, orderTotals, priceOn } from '../domain/office.ts';
-import type { Product } from '../domain/types.ts';
+import { accountingRows, deliveredLines, deliveredOrders, profitBy, profitOf, weekStatus, type AccountingRow, type Profit } from '../domain/accounting.ts';
+import { accountingWorkbook } from '../domain/accountingSheet.ts';
+import { accountingSummary, billerCode, costOn, lineCalc, orderTotals, priceOn } from '../domain/office.ts';
+import type { Brand, Customer, Order, Product } from '../domain/types.ts';
 import { xlsx } from '../xlsx.ts';
 import { Card, Notice, Page } from './common.tsx';
 import { PrintSheet, Summary, SummaryTable } from './OfficeView.tsx';
@@ -71,8 +71,9 @@ function Accounting() {
     return (
       <PrintSheet onBack={() => setPrint(false)}>
         <h1 className="print-title">Ekonomi – {weekLabel}</h1>
-        <p>{status.complete ? t('accounting.complete') : t('accounting.incomplete', { delivered: status.delivered.length, total: status.orders.length })}</p>
-        <RowsTable rows={rows} dayName={dayName} />
+        <p className="print-status">{status.complete ? t('accounting.complete') : t('accounting.incomplete', { delivered: status.delivered.length, total: status.orders.length })}</p>
+        <WeekSheet monday={monday} orders={orders} products={products} customers={customers} brands={brands} dayName={dayName} />
+        <h2 className="print-sub-title">{t('accounting.invoiceBasis')}</h2>
         {summary.map((b) => (
           <section key={b.brand?.id ?? 'none'} className="print-day">
             <h2>
@@ -217,34 +218,116 @@ function Accounting() {
   );
 }
 
-/** The delivered rows with their calculation, as on the spreadsheet (for printing). */
-function RowsTable({ rows, dayName }: { rows: AccountingRow[]; dayName: (d: LocalDate) => string }) {
+
+/**
+ * The week to print: the days side by side (as on screen), each with its orders – customer,
+ * billing mark, order number, the products and their pallets/boxes, whether it was loaded, and
+ * the order's amount – with day and week totals. Black on white, thin rules, no fills, for A4
+ * landscape with little ink.
+ */
+function WeekSheet({ monday, orders, products, customers, brands, dayName }: { monday: LocalDate; orders: Order[]; products: Product[]; customers: Customer[]; brands: Brand[]; dayName: (d: LocalDate) => string }) {
   const { t } = useApp();
+  const live = orders.filter((o) => !o.cancelled);
+  const base = Array.from({ length: 5 }, (_, i) => addDays(monday, i));
+  const extra = [addDays(monday, 5), addDays(monday, 6)].filter((d) => live.some((o) => o.day === d));
+  const days = [...base, ...extra];
+  const byDay = (d: LocalDate) => live.filter((o) => o.day === d).sort((a, b) => (a.orderNumber ?? '').localeCompare(b.orderNumber ?? '', 'sv', { numeric: true }) || a.createdAt - b.createdAt);
+  const product = (id: string) => products.find((p) => p.id === id);
+  const loaded = (o: Order) => o.shippedAt !== undefined;
+  const linesOf = (o: Order) => (loaded(o) ? deliveredLines(o) : o.lines).filter((l) => l.pallets || l.boxes);
+  const orderAmount = (o: Order) => {
+    let amount = 0;
+    let missing = false;
+    for (const l of linesOf(o)) {
+      const a = lineCalc(l, product(l.productId), o.day, o.customerId).amount;
+      if (a === undefined) missing = true;
+      else amount += a;
+    }
+    return { amount, missing };
+  };
+  const orderPallets = (o: Order) => orderTotals([{ ...o, lines: linesOf(o) }]).pallets;
+  const mark = (o: Order) => {
+    const b = brands.find((x) => x.id === customers.find((c) => c.id === o.customerId)?.billedBy);
+    return b ? billerCode(b) : '';
+  };
+  const weekAmount = live.reduce((s, o) => s + orderAmount(o).amount, 0);
+  const weekPallets = live.reduce((s, o) => s + orderPallets(o), 0);
+  // Split the week by billing company over the same orders as the totals (not delivered-only), so it reconciles.
+  const billerMap = new Map<string, { brand?: Brand; amount: number }>();
+  for (const o of live) {
+    const brand = brands.find((x) => x.id === customers.find((c) => c.id === o.customerId)?.billedBy);
+    const key = brand?.id ?? 'none';
+    const cur = billerMap.get(key) ?? { brand, amount: 0 };
+    cur.amount += orderAmount(o).amount;
+    billerMap.set(key, cur);
+  }
+  const billerTotals = [...billerMap.values()].sort((a, b) => (a.brand?.name ?? 'ÿ').localeCompare(b.brand?.name ?? 'ÿ', 'sv'));
+
   return (
-    <table className="proto-table">
-      <thead>
-        <tr>
-          <th>{t('protocol.time')}</th>
-          <th>{t('office.orderNumber')}</th>
-          <th>{t('pack.customer')}</th>
-          <th>{t('protocol.product')}</th>
-          <th>{t('accounting.calculation')}</th>
-          <th className="num">{t('office.amountExVat')}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.order.id + r.line.productId}>
-            <td>{dayName(r.day)}</td>
-            <td>{r.order.orderNumber ?? ''}</td>
-            <td>{r.customer?.name ?? '?'}</td>
-            <td>{r.product?.name ?? '?'}</td>
-            <td>{explain(r.calc.pallets, r.calc.boxes, r.calc.boxesPerPallet, r.calc.palletFrom, r.calc.boxFrom, r.calc.price?.perPallet, r.calc.price?.perBox, r.calc.missing)}</td>
-            <td className="num">{r.calc.amount === undefined ? '–' : money(r.calc.amount)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <section className="week-sheet">
+      <div className="week-cols" style={{ ['--cols' as string]: String(days.length) }}>
+        {days.map((d) => {
+          const list = byDay(d);
+          const pallets = list.reduce((s, o) => s + orderPallets(o), 0);
+          const amount = list.reduce((s, o) => s + orderAmount(o).amount, 0);
+          return (
+            <div key={d} className="week-day">
+              <div className="week-day-head">
+                <span className="week-day-name">{dayName(d)}</span>
+                <span className="week-day-tot">
+                  {t('office.orderPallets', { pallets })} · {money(amount)}
+                </span>
+              </div>
+              {!list.length ? (
+                <p className="week-empty">{t('office.noOrdersDay')}</p>
+              ) : (
+                list.map((o) => {
+                  const a = orderAmount(o);
+                  return (
+                    <div key={o.id} className="week-order">
+                      <div className="week-order-head">
+                        <span className="week-cust">
+                          {customers.find((c) => c.id === o.customerId)?.name ?? '?'}
+                          {mark(o) && <span className="week-mark">{mark(o)}</span>}
+                          {o.orderNumber && <span className="week-ono">#{o.orderNumber}</span>}
+                        </span>
+                        <span className={`week-state ${loaded(o) ? '' : 'week-open'}`}>{loaded(o) ? '✓' : t('accounting.notYet')}</span>
+                      </div>
+                      {linesOf(o).map((l) => {
+                        const p = product(l.productId);
+                        return (
+                          <div key={l.productId} className="week-line">
+                            <span className="week-prod">{p?.name ?? '?'}</span>
+                            <span className="week-qty">{[l.pallets ? t('office.orderPallets', { pallets: l.pallets }) : '', l.boxes ? `${l.boxes} ${t('pack.boxShort')}` : ''].filter(Boolean).join(' ')}</span>
+                          </div>
+                        );
+                      })}
+                      <div className="week-order-foot">
+                        <span>{t('office.orderPallets', { pallets: orderPallets(o) })}</span>
+                        <span>{a.missing ? t('office.noPriceShort') : money(a.amount)}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="week-total">
+        <span>
+          {t('accounting.weekTotal')}: {t('office.orderPallets', { pallets: weekPallets })}
+        </span>
+        <span className="week-total-billers">
+          {billerTotals.map((b) => (
+            <span key={b.brand?.id ?? 'none'}>
+              {b.brand ? billerCode(b.brand) : t('office.noBillerName')} {money(b.amount)}
+            </span>
+          ))}
+          <strong>{money(weekAmount)}</strong>
+        </span>
+      </div>
+    </section>
   );
 }
 

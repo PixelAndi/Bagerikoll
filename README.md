@@ -115,6 +115,9 @@ line's amount, Ändra and Flytta.
 
 ## Ekonomi (accounting)
 
+**Skriv ut** prints the week as day columns (customer, order number, products, delivered quantities and amounts, day and week totals) plus the invoice basis per billing company — black on white, thin rules, no fills, A4 landscape, for minimal ink.
+
+
 - **A week at a time, in calendar order.** At the top: whether the week is **complete** – every
   order picked up in it loaded at the dock with its quantities reported – the delivered value
   (excl. VAT), pallets delivered, deliveries done and the amount per billing company.

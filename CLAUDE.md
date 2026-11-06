@@ -97,7 +97,7 @@ dock reported (`Order.delivered`); each line's calculation shown (`lineCalc`, `e
 accounting sets prices and costs (`ui/PriceEditor.tsx`; `Product.costs`, `lineCost`; Admin no
 longer edits prices); "Veckans vinst" (`profitOf`, `profitBy`) – revenue, cost, gross profit,
 margin per day/customer/product; Excel file with
-formulas (verify changes by recalculating with LibreOffice, `soffice --convert-to csv`). **Fryslager** (formerly Lastkaj; route `dock`; `ui/DockView.tsx`, `domain/dock.ts` + tests): stock
+formulas (verify changes by recalculating with LibreOffice, `soffice --convert-to csv`). **Skriv ut** (`WeekSheet` in AccountingView + print CSS `.week-*`): the week prints as the day columns on screen – each order's customer, billing mark, order number, products, pallets/boxes, loaded-or-not and amount, with day and week totals (per billing company, reconciled over the same orders) – then the invoice basis per company; black on white, hairline rules, no fills, A4 landscape. **Fryslager** (formerly Lastkaj; route `dock`; `ui/DockView.tsx`, `domain/dock.ts` + tests): stock
 counting (`ui/CountView.tsx`, `#/count`, `StockCount.workerIds`) and a QR code for a phone
 (`ui/QrCode.tsx` via `qrcode-generator`; link and seconds in `settings.qrLink/qrSeconds`, Admin);
 **Förbered + OBS** (`Order.prepared`, `ObsRequest` in table `obs`, `domain/obs.ts`,
