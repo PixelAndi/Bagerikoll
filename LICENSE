@@ -1,0 +1,71 @@
+Licens för Bagerikoll
+=====================
+
+Upphovsrätt (c) [ÅR] [DITT NAMN / FÖRETAG]. Med ensamrätt.
+
+Detta är proprietär programvara. Den är INTE fri programvara och INTE öppen
+källkod, trots att källkoden ligger i ett publikt kodförråd. Att källkoden är
+synlig ger ingen rätt att använda, köra, kopiera, ändra eller sprida den.
+
+
+1. Äganderätt
+-------------
+Upphovsmannen [DITT NAMN / FÖRETAG] innehar hela upphovsrätten och alla övriga
+immateriella rättigheter till Bagerikoll – källkod, byggd app, serverbild,
+design, databasstruktur och dokumentation ("Programvaran"). Inget i detta
+kodförråd överlåter någon rättighet.
+
+
+2. Licens först vid full betalning
+----------------------------------
+Rätten att använda Programvaran i drift uppkommer FÖRST när avtalad ersättning
+till upphovsmannen är till fullo betald, enligt det uppdragsavtal som ingåtts
+mellan upphovsmannen och uppdragsgivaren.
+
+Innan full betalning skett får Programvaran användas endast under en i
+uppdragsavtalet uttryckligen överenskommen utvärderingsperiod, och endast för
+utvärdering – inte i skarp drift.
+
+All annan användning utan upphovsmannens skriftliga medgivande är otillåten.
+Detta omfattar att köra Programvaran i produktion, installera den på egen eller
+annans server, kopiera, ändra, vidarelicensiera, sälja eller sprida den.
+
+
+3. Vad licensen omfattar när den uppkommit
+------------------------------------------
+När licens uppkommit enligt punkt 2 får uppdragsgivaren en icke-exklusiv,
+icke överlåtbar rätt att använda Programvaran i sin egen verksamhet, i den
+omfattning som anges i uppdragsavtalet. Källkoden överlåts inte, om inte annat
+skriftligen avtalats. Upphovsmannen behåller upphovsrätten.
+
+
+4. Uppdragsgivarens egna data
+-----------------------------
+Uppgifter som uppdragsgivaren själv matar in (namn, kunder, ordrar, protokoll
+m.m.) tillhör uppdragsgivaren. Programvaran kan alltid exportera dessa data till
+fil (Mer → Datafil, samt serverns export). Denna licens begränsar inte
+uppdragsgivarens tillgång till sina egna data, oavsett betalning.
+
+
+5. Ingen garanti
+----------------
+Programvaran tillhandahålls i befintligt skick. Upphovsmannen lämnar inga
+garantier och ansvarar inte för skada till följd av användningen, i den mån
+tvingande lag inte säger annat. Programvaran är ett hjälpmedel; ansvaret för att
+lagstadgade krav (t.ex. livsmedelssäkerhet och dokumentation) uppfylls ligger
+hos verksamheten.
+
+
+6. Upphörande
+-------------
+Rätten att använda Programvaran upphör om villkoren i denna licens eller i
+uppdragsavtalet bryts. Vid upphörande ska användningen upphöra; uppdragsgivaren
+har dock alltid rätt att först exportera sina egna data enligt punkt 4.
+
+
+7. Tillämplig lag
+-----------------
+Svensk lag tillämpas på denna licens.
+
+
+Kontakt: [DIN E-POST]

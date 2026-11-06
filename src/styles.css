@@ -1969,3 +1969,11 @@ input[type='checkbox'] {
 .demo-banner-roles { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .demo-banner .cal-chip { cursor: pointer; border: 1px solid var(--cal-komp-strong); font: inherit; font-size: 0.85rem; font-weight: 700; }
 .demo-banner .cal-chip.pack-chip-on { background: var(--cal-komp-strong); color: #fff; }
+
+/* Packetering: add / subtract mode. */
+.pack-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.pack-mode-btn { font: inherit; font-weight: 800; padding: 8px 10px; border-radius: 10px; border: 2px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+.pack-mode-btn.on { border-color: var(--accent); background: var(--accent); color: #fff; }
+.pack-mode-sub.on { border-color: var(--cal-missing-strong); background: var(--cal-missing-strong); }
+.pack-subtracting .pack-pallet:not(.pack-pausing), .pack-subtracting .pack-box { background: var(--cal-missing-strong); }
+.pack-last-sub { border-color: var(--cal-missing-strong); }

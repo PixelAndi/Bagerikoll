@@ -102,6 +102,8 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
   const [ending, setEnding] = useState<{ then?: Product } | null>(null);
   const [reporting, setReporting] = useState(false);
   const [palletPause, setPalletPause] = useState(false);
+  // "Dra av" mode: the pallet and box buttons take away from the count instead of adding.
+  const [subtracting, setSubtracting] = useState(false);
   const lastPallet = useRef(0);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -133,6 +135,32 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
     const e: Entry = { id: newId(), at: Date.now(), day: todayLocal(), kind, quantity, boxesOnPallet, productId: product.id, sessionId, workerIds, throwerIds: throwerIds.length ? throwerIds : undefined, station: settings.station, runId: run.id };
     await db.entries.put(e);
     navigator.vibrate?.(kind === 'pallet' ? 80 : 40);
+    setNow(Date.now());
+  };
+  // Take pallets or boxes off this run's count (a miscount). Recorded as a correction entry, never
+  // below zero; in spread mode a pallet is removed with the boxes the last one had.
+  const subtract = async (kind: EntryKind, n: number) => {
+    if (!run || !product || n <= 0 || !canPack(run, Date.now())) return;
+    const c = runCount(run, runEntries, product);
+    let quantity: number;
+    let boxesOnPallet: number | undefined;
+    if (kind === 'pallet') {
+      if (c.pallets <= 0) return;
+      quantity = -1;
+      if (run.spreadPallets !== undefined) {
+        if (Date.now() - lastPallet.current < PALLET_PAUSE_MS) return;
+        lastPallet.current = Date.now();
+        setPalletPause(true);
+        setTimeout(() => setPalletPause(false), PALLET_PAUSE_MS);
+        const lastAdded = [...runEntries].filter((e) => e.runId === run.id && !e.voided && e.kind === 'pallet' && e.quantity > 0 && e.boxesOnPallet !== undefined).sort((a, b) => b.at - a.at)[0];
+        boxesOnPallet = lastAdded?.boxesOnPallet;
+      }
+    } else {
+      quantity = -Math.min(n, c.boxes); // never take the loose-box count below zero
+      if (quantity === 0) return;
+    }
+    await db.entries.put({ id: newId(), at: Date.now(), day: todayLocal(), kind, quantity, boxesOnPallet, productId: product.id, sessionId, workerIds, throwerIds: throwerIds.length ? throwerIds : undefined, station: settings.station, runId: run.id });
+    navigator.vibrate?.(30);
     setNow(Date.now());
   };
   const addHalves = async (n: number) => {
@@ -169,28 +197,39 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
           <section className="card cal-focus pack-register">
             <RunHead run={run} product={product} entries={runEntries} now={now} />
             {open ? (
-              <>
-                <button type="button" className={`pack-big pack-pallet ${palletPause ? 'pack-pausing' : ''}`} aria-disabled={palletPause} onClick={() => void register('pallet', 1)}>
-                  <span className="pack-plus">{palletPause ? '✓' : '+1'}</span>
+              <div className={subtracting ? 'pack-subtracting' : ''}>
+                {/* Add, or take away from the count (a miscount). */}
+                <div className="pack-mode" role="group" aria-label={t('pack.mode')}>
+                  <button type="button" className={`pack-mode-btn ${!subtracting ? 'on' : ''}`} aria-pressed={!subtracting} onClick={() => setSubtracting(false)}>
+                    ＋ {t('pack.modeAdd')}
+                  </button>
+                  <button type="button" className={`pack-mode-btn pack-mode-sub ${subtracting ? 'on' : ''}`} aria-pressed={subtracting} onClick={() => setSubtracting(true)}>
+                    － {t('pack.modeSubtract')}
+                  </button>
+                </div>
+                <button type="button" className={`pack-big pack-pallet ${palletPause ? 'pack-pausing' : ''}`} aria-disabled={palletPause} onClick={() => void (subtracting ? subtract('pallet', 1) : register('pallet', 1))}>
+                  <span className="pack-plus">{palletPause ? '✓' : subtracting ? '−1' : '+1'}</span>
                   {palletPause ? t('pack.palletDone') : t('pack.pallet')}
                 </button>
                 <div className="pack-box-buttons" role="group" aria-label={t('pack.boxesWord')}>
                   {BOX_STEPS.map((n) => (
-                    <button key={n} type="button" className="pack-big pack-box" onClick={() => void register('box', n)}>
-                      <span className="pack-plus">+{n}</span>
+                    <button key={n} type="button" className="pack-big pack-box" onClick={() => void (subtracting ? subtract('box', n) : register('box', n))}>
+                      <span className="pack-plus">{subtracting ? '−' : '+'}{n}</span>
                       {t(n === 1 ? 'pack.box' : 'pack.boxes')}
                     </button>
                   ))}
                 </div>
                 <div className="pack-extra-buttons">
                   <button type="button" className="button pack-other-boxes" onClick={() => setBoxPad(true)}>
-                    {t('pack.otherBoxes')}
+                    {subtracting ? t('pack.otherBoxesSub') : t('pack.otherBoxes')}
                   </button>
-                  <button type="button" className="button pack-other-boxes pack-half-button" onClick={() => setHalfPad(true)}>
-                    ½ {t('half.button')}
-                  </button>
+                  {!subtracting && (
+                    <button type="button" className="button pack-other-boxes pack-half-button" onClick={() => setHalfPad(true)}>
+                      ½ {t('half.button')}
+                    </button>
+                  )}
                 </div>
-              </>
+              </div>
             ) : (
               <DetectorTestCard run={run} product={product} workerIds={workerIds} now={now} />
             )}
@@ -276,7 +315,7 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
         )}
       </div>
 
-      {boxPad && product && <QuantityPad kind="box" product={product} onClose={() => setBoxPad(false)} onDone={(n) => void register('box', n).then(() => setBoxPad(false))} />}
+      {boxPad && product && <QuantityPad kind="box" product={product} title={subtracting ? t('pack.otherBoxesSub') : undefined} onClose={() => setBoxPad(false)} onDone={(n) => void (subtracting ? subtract('box', n) : register('box', n)).then(() => setBoxPad(false))} />}
       {palletPad && product && run && (
         <QuantityPad
           kind="pallet"
@@ -839,11 +878,12 @@ function ProductTile({ product, on, count, onPick }: { product: Product; on: boo
 /** What was just registered, big, so a wrong tap is seen at once – with the way to undo it. */
 function LastEntry({ entry, product, now, onUndo }: { entry: Entry; product?: Product; now: number; onUndo: (e: Entry) => void }) {
   const { t } = useApp();
-  const what = t(entry.kind === 'pallet' ? 'pack.nPallets' : 'pack.nBoxes', { n: entry.quantity });
+  const sub = entry.quantity < 0;
+  const what = t(entry.kind === 'pallet' ? 'pack.nPallets' : 'pack.nBoxes', { n: Math.abs(entry.quantity) });
   return (
-    <section className={`card pack-last ${entry.voided ? 'pack-last-voided' : ''}`} aria-live="polite">
+    <section className={`card pack-last ${entry.voided ? 'pack-last-voided' : ''} ${sub ? 'pack-last-sub' : ''}`} aria-live="polite">
       <span>
-        <strong>{entry.voided ? t('pack.undone') : '✓'} {what} · {product?.name ?? '?'}</strong>
+        <strong>{entry.voided ? t('pack.undone') : sub ? '−' : '✓'} {what} · {product?.name ?? '?'}{sub && !entry.voided ? ` · ${t('pack.subtracted')}` : ''}</strong>
         <span className="small muted">{new Date(entry.at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}</span>
       </span>
       {canWorkerUndo(entry, now) && (
@@ -860,7 +900,8 @@ function RecentRow({ entry, product, now, onUndo }: { entry: Entry; product?: Pr
   return (
     <li className={entry.voided ? 'pack-voided' : ''}>
       <span>
-        {new Date(entry.at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })} · {t(entry.kind === 'pallet' ? 'pack.nPallets' : 'pack.nBoxes', { n: entry.quantity })} · {product?.name ?? '?'}
+        {new Date(entry.at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })} · {entry.quantity < 0 ? '−' : ''}{t(entry.kind === 'pallet' ? 'pack.nPallets' : 'pack.nBoxes', { n: Math.abs(entry.quantity) })} · {product?.name ?? '?'}
+        {entry.quantity < 0 && !entry.voided && ` · ${t('pack.subtracted')}`}
         {entry.voided && ` · ${t('pack.undone')}`}
       </span>
       {canWorkerUndo(entry, now) && (

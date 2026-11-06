@@ -14,7 +14,7 @@ packers, station and time, filters and CSV export. Products are grouped under th
 customer at the station; who is packing is a list of all names (active filled, the rest
 outlined) – anyone taps one to add/remove it, confirmed with "Är du säker?" (no PIN; creating
 names is Admin's; the last active packer can't be removed). Landscape tablet: two columns
-(`.pack-main` sticky on the left with the buttons and the last entry, `.pack-side` on the right). Pallet +1 only (rests 1.5 s against double taps), boxes +1/+5/+10.
+(`.pack-main` sticky on the left with the buttons and the last entry, `.pack-side` on the right). Pallet +1 only (rests 1.5 s against double taps), boxes +1/+5/+10. A **Lägg till / Dra av** toggle flips the pallet and box buttons to take off the count (a miscount): recorded as a negative-quantity `Entry`, `runCount` nets it, clamped so a run never goes below zero (spread mode removes a pallet with the boxes the last one had).
 
 **Runs + the packing protocol (built; replaces the paper form – a food-safety record, the owner
 wants it compliant):** `domain/runs.ts` (+ tests), `PackView.tsx`, `ProtocolView.tsx`. A run =

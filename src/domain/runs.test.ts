@@ -94,3 +94,19 @@ describe('runs for an order: extra boxes and set pallets', async () => {
     expect(runTarget(base, runCount(base, [e('box', 3)]))).toBeUndefined();
   });
 });
+
+describe('runCount nets subtractions', async () => {
+  const { runCount } = await import('./runs.ts');
+  const base = { id: 'r', day: '2030-01-07', station: 'S', productId: 'p', startedAt: 0, tests: [] };
+  const e = (kind: 'pallet' | 'box', quantity: number, boxesOnPallet?: number) => ({ id: Math.random().toString(), at: 1, day: '2030-01-07', kind, quantity, productId: 'p', sessionId: 's', workerIds: [], station: 'S', runId: 'r', boxesOnPallet });
+  it('a negative box entry takes boxes off the count', () => {
+    const run = { ...base, boxesPerPallet: 36 };
+    const c = runCount(run, [e('pallet', 2), e('box', 10), e('box', -4)]);
+    expect(c).toMatchObject({ pallets: 2, boxes: 6, totalBoxes: 78 });
+  });
+  it('a negative pallet in spread mode removes its boxes too', () => {
+    const run = { ...base, boxesPerPallet: 36, spreadPallets: 3 };
+    const c = runCount(run, [e('pallet', 1, 40), e('pallet', 1, 38), e('pallet', -1, 38)]);
+    expect(c).toEqual({ pallets: 1, boxes: 0, totalBoxes: 40 });
+  });
+});
