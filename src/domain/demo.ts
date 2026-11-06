@@ -7,6 +7,14 @@ import type { Brand, Customer, Deviation, DoughCount, Entry, HalfBox, ObsRequest
 // customers and companies are invented; amounts and prices are of the kind the paper order book shows.
 
 export const DEMO_PREFIX = 'demo-';
+
+/** The test data's live parts: what a device shown as a station opens (see demoSite.ts). */
+export const DEMO_LIVE = {
+  packStation: 'Packning 1 (test)',
+  dockStation: 'Fryslager (test)',
+  packSession: (today: LocalDate) => `${DEMO_PREFIX}s-${today}`,
+  dockSession: (today: LocalDate) => `${DEMO_PREFIX}ds-${today}`,
+};
 export const isDemo = (id: string) => id.startsWith(DEMO_PREFIX);
 
 export interface DemoData {
@@ -171,7 +179,7 @@ export function demoData(today: LocalDate, now: number, at: (day: LocalDate, hh:
     // Packing: one session from 05:00, a run per product, detector tests every two hours.
     const team = [pick(packers), pick(packers)].filter((x, i, a) => a.indexOf(x) === i);
     const up = rnd() < 0.8 ? [pick(upstairs)] : [];
-    const session: Session = { id: id('s', day), workerIds: team, throwerIds: up, startedAt: at(day, 5, 0), station: 'Packning 1 (test)', updatedAt: stamp };
+    const session: Session = { id: DEMO_LIVE.packSession(day), workerIds: team, throwerIds: up, startedAt: at(day, 5, 0), station: DEMO_LIVE.packStation, updatedAt: stamp };
     sessions.push(session);
     let clock = at(day, 5, 5);
     const cutoff = isToday ? now - 25 * 60_000 : Infinity;
@@ -267,11 +275,18 @@ export function demoData(today: LocalDate, now: number, at: (day: LocalDate, hh:
     }
   }
 
-  // A packing session going on now (a working day): the Stationer view shows it live.
+  // On a working day, the packing goes on now and the freezer is loading a delivery: the
+  // Stationer view, the packing station and Fryslager all show something live.
   if (isoWeekday(today) <= 5) {
-    const s = sessions.find((x) => x.id === id('s', today));
-    if (s && now > at(today, 5, 30) && now < at(today, 18, 0)) s.endedAt = undefined;
-    else if (s) s.endedAt = s.endedAt ?? at(today, 13, 0);
+    const s = sessions.find((x) => x.id === DEMO_LIVE.packSession(today));
+    if (s) s.endedAt = undefined;
+    const waiting = orders.filter((o) => o.day === today && !o.shippedAt);
+    const loading = waiting[waiting.length - 1];
+    if (loading) {
+      loading.lineChecks = [{ productId: loading.lines[0].productId, state: 'ok', pallets: loading.lines[0].pallets, boxes: loading.lines[0].boxes, at: now - 6 * 60_000, workerIds: loaders.slice(0, 2) }];
+      loading.prepared = { at: now - 50 * 60_000, workerIds: loaders.slice(0, 1), missing: [] };
+    }
+    sessions.push({ id: DEMO_LIVE.dockSession(today), kind: 'dock', workerIds: loaders.slice(0, 2), driverId: driver, loadingOrderId: loading?.id, startedAt: now - 90 * 60_000, station: DEMO_LIVE.dockStation, updatedAt: stamp });
   }
 
   // Deviations the managers note: scrapped doughs, a low yield, the station's own.

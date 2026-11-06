@@ -244,6 +244,10 @@ station). The production day is the packing day.
 
 ## Data between devices
 
+**The GitHub Pages site is a demo**: it fills itself with made-up data each day and has a bar to
+show the app as a manager's phone, the packing station, the freezer or accounting. The real app
+runs on the bakery's own server.
+
 Opened from Bagerikoll's server (`server/`, see `deploy/TRUENAS.md`), every device keeps a full
 copy and syncs with the server (the header shows **Synkad HH:MM**; offline work syncs later).
 Opened from anywhere else, each device keeps its own data. Mer → **Datafil**

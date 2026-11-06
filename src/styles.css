@@ -1962,3 +1962,10 @@ input[type='checkbox'] {
 /* A newer version is out. */
 .update-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 auto 12px; max-width: var(--page-max, 980px); padding: 10px 14px; border-radius: 12px; background: var(--cal-missing); border: 1px solid var(--cal-missing-strong); font-weight: 700; }
 .update-bar .button { min-height: 40px; white-space: nowrap; }
+
+/* The demo site's bar (GitHub Pages). */
+.demo-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 0 auto 12px; padding: 10px 14px; border-radius: 12px; background: var(--cal-komp); border: 1px solid var(--cal-komp-strong); font-size: 0.9rem; }
+.demo-banner-text { flex: 1 1 320px; }
+.demo-banner-roles { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.demo-banner .cal-chip { cursor: pointer; border: 1px solid var(--cal-komp-strong); font: inherit; font-size: 0.85rem; font-weight: 700; }
+.demo-banner .cal-chip.pack-chip-on { background: var(--cal-komp-strong); color: #fff; }

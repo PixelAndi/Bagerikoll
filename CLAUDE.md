@@ -50,7 +50,11 @@ new image; open pages show "Ladda om" when the published index.html loads anothe
 Testdata; `domain/demo.ts` + tests): made-up weeks around today, every id starting `demo-`;
 "Ta bort testdata" calls the server's `/api/demo/remove` (deletes demo rows, notes
 `demoRemovedAt`, refuses older demo records), and each device drops its copies at its next sync
-(`removeDemoLocal`). Later: the company's Raspberry Pi.
+(`removeDemoLocal`). **GitHub Pages is the demo** (owner's wish, to show employers; `src/demoSite.ts`,
+`ui/DemoBanner.tsx`, by hostname `*.github.io`): test data made fresh each day (`ensureDemo`, live
+packing session, run and freezer loading), a bar "Demoversion … Visa som: Chef / Packning /
+Fryslager / Ekonomi" switching the device's role, Admin without the PIN. The server is never a demo.
+Later: the company's Raspberry Pi.
 
 **Kontor (built): the office** (`ui/OfficeView.tsx`, `ui/OrderEditor.tsx` shared with Produktion,
 `domain/office.ts` + tests), managers only (same gate as Produktion), for computer, tablet and

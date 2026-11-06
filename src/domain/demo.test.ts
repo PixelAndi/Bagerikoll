@@ -26,7 +26,8 @@ describe('test data', () => {
 
   it('has a packing session going on now', () => {
     const open = d.sessions.filter((s) => !s.endedAt);
-    expect(open).toHaveLength(1);
+    expect(open.map((s) => s.kind ?? 'pack').sort()).toEqual(['dock', 'pack']);
+    expect(open.find((s) => s.kind === 'dock')?.loadingOrderId).toBeTruthy();
     expect(d.runs.filter((r) => !r.endedAt)).toHaveLength(1);
   });
 

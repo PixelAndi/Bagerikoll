@@ -8,6 +8,8 @@ import { startSync } from './sync.ts';
 import { SyncBadge } from './ui/SyncBadge.tsx';
 import { DeviceName } from './ui/DeviceName.tsx';
 import { UpdateBar } from './ui/UpdateBar.tsx';
+import { DemoBanner } from './ui/DemoBanner.tsx';
+import { DEMO_SITE, demoRole, ensureDemo } from './demoSite.ts';
 import { AdminView } from './ui/AdminView.tsx';
 import { Icon } from './ui/common.tsx';
 import { DesignView } from './ui/DesignView.tsx';
@@ -88,7 +90,8 @@ export function App() {
     settings,
     save,
     admin,
-    askPin: (then?: () => void) => (admin ? then?.() : setPin({ then })),
+    // The demo site opens Admin without the PIN (its data is made up; the PIN is the bakery's).
+    askPin: (then?: () => void) => (admin ? then?.() : DEMO_SITE ? (setAdmin(true), then?.()) : setPin({ then })),
     closeAdmin: () => setAdmin(false),
   };
   const kiosk = settings.locked ? KIOSK[settings.lockedTo ?? 'pack'] : undefined;
@@ -98,6 +101,16 @@ export function App() {
   station.current = settings.station;
   useEffect(() => {
     void startSync(() => station.current);
+    // The demo site: today's made-up data, and on a first visit the manager's view (everything).
+    if (DEMO_SITE)
+      void ensureDemo().then(() => {
+        if (!localStorage.getItem('bagerikoll-demo-seen')) {
+          localStorage.setItem('bagerikoll-demo-seen', '1');
+          const { settings: patch, hash } = demoRole('manager');
+          save(patch);
+          location.hash = hash;
+        }
+      });
   }, []);
 
   return (
@@ -113,6 +126,7 @@ export function App() {
           {admin && <span className="admin-badge">{t('admin.badge')}</span>}
         </header>
         <UpdateBar />
+        {DEMO_SITE && <DemoBanner />}
         {/* Kiosk mode: only the workstation's own pages and Admin. */}
         {kiosk && !kiosk.routes.includes(route.name) && route.name !== 'admin' ? (
           <Screen route={kiosk.route} />

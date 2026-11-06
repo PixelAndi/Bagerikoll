@@ -9,6 +9,7 @@ import { dockNow, packedDays, packingNow, STALE_MS, type DockNow, type PackingNo
 import { batchRange, runCount, testState } from '../domain/runs.ts';
 import { href } from '../router.ts';
 import { useSyncStatus } from '../sync.ts';
+import { DEMO_SITE } from '../demoSite.ts';
 import { Fold, Notice } from './common.tsx';
 
 // The managers' view of the stations (their Stationer tab): what each packing station and the
@@ -49,7 +50,7 @@ export function OverviewView() {
 
   return (
     <>
-      {sync.state === 'off' ? (
+      {DEMO_SITE ? null : sync.state === 'off' ? (
         <Notice kind="info">{t('overview.local')}</Notice>
       ) : (
         <p className="small muted">{sync.at ? t('overview.fresh', { time: clock(sync.at) }) : t('sync.syncing')}</p>
