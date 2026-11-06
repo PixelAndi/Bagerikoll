@@ -42,7 +42,10 @@ built by `.github/workflows/server.yml`; testing on the owner's TrueNAS behind a
 + Access on the owner's own domain (`deploy/truenas-compose.yaml`, `deploy/TRUENAS.md`; the tunnel
 token never goes in the repo or chat). The app syncs only when opened from the server
 (`src/sync.ts`: health check, push changed since last push, pull since seq, `mergeRecords`;
-header `SyncBadge`); on GitHub Pages it stays device-only. Later: the company's Raspberry Pi.
+header `SyncBadge`); on GitHub Pages it stays device-only. Updates: the compose file's
+`watchtower` (maintained fork `nickfedor/watchtower`, label-scoped, hourly) restarts the server on a
+new image; open pages show "Ladda om" when the published index.html loads another script
+(`src/update.ts`, `ui/UpdateBar.tsx`). Later: the company's Raspberry Pi.
 
 **Kontor (built): the office** (`ui/OfficeView.tsx`, `ui/OrderEditor.tsx` shared with Produktion,
 `domain/office.ts` + tests), managers only (same gate as Produktion), for computer, tablet and

@@ -7,6 +7,7 @@ import { useSettings } from './settings.ts';
 import { startSync } from './sync.ts';
 import { SyncBadge } from './ui/SyncBadge.tsx';
 import { DeviceName } from './ui/DeviceName.tsx';
+import { UpdateBar } from './ui/UpdateBar.tsx';
 import { AdminView } from './ui/AdminView.tsx';
 import { Icon } from './ui/common.tsx';
 import { DesignView } from './ui/DesignView.tsx';
@@ -111,6 +112,7 @@ export function App() {
           <SyncBadge />
           {admin && <span className="admin-badge">{t('admin.badge')}</span>}
         </header>
+        <UpdateBar />
         {/* Kiosk mode: only the workstation's own pages and Admin. */}
         {kiosk && !kiosk.routes.includes(route.name) && route.name !== 'admin' ? (
           <Screen route={kiosk.route} />

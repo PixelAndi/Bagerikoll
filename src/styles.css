@@ -1958,3 +1958,7 @@ input[type='checkbox'] {
 .upstairs-link-go { color: var(--accent); font-weight: 700; white-space: nowrap; }
 .spread-choice { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit; }
 .spread-choice.on { border: 2px solid var(--accent); background: var(--cal-focus-bg, var(--surface)); }
+
+/* A newer version is out. */
+.update-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 auto 12px; max-width: var(--page-max, 980px); padding: 10px 14px; border-radius: 12px; background: var(--cal-missing); border: 1px solid var(--cal-missing-strong); font-weight: 700; }
+.update-bar .button { min-height: 40px; white-space: nowrap; }

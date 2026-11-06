@@ -1,5 +1,6 @@
 # TrueNAS SCALE → Apps → Discover Apps → ⋮ → Install via YAML. Name: bagerikoll
-# Change two things: the dataset path (POOL) and the tunnel token (from Cloudflare →
+# (To change an installed app: Apps → bagerikoll → Edit, paste, Save.)
+# Change two things: the dataset path (POOL/DATASET) and the tunnel token (from Cloudflare →
 # Zero Trust → Networks → Tunnels → your tunnel → the token after "--token").
 # No ports are opened on the server: the app is reached only through the Cloudflare tunnel,
 # whose public hostname points at http://bagerikoll:8080.
@@ -12,7 +13,10 @@ services:
     environment:
       TZ: Europe/Stockholm
     volumes:
-      - /mnt/POOL/apps/bagerikoll:/data
+      - /mnt/POOL/DATASET:/data
+    labels:
+      # Watchtower (below) updates only containers with this label.
+      com.centurylinklabs.watchtower.enable: "true"
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -22,3 +26,18 @@ services:
       TUNNEL_TOKEN: "PASTE-YOUR-TUNNEL-TOKEN-HERE"
     depends_on:
       - bagerikoll
+
+  # Checks every hour for a new Bagerikoll image (GitHub builds one on every change) and restarts
+  # the app with it; the data in the dataset is not touched. It controls Docker through its
+  # socket, so it is limited to containers labelled as above – other apps are left alone.
+  # The maintained fork of Watchtower (the original, containrrr/watchtower, is archived).
+  watchtower:
+    image: nickfedor/watchtower:latest
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Stockholm
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_POLL_INTERVAL: "3600"
+      WATCHTOWER_CLEANUP: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
