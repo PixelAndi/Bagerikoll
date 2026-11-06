@@ -91,3 +91,19 @@ for (const name of DATA_TABLES) {
 }
 
 export const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+const DEMO = 'demo-';
+/** Test data on this device (src/domain/demo.ts): how many records. */
+export async function demoCount(): Promise<number> {
+  let n = 0;
+  for (const name of DATA_TABLES) n += await db.table(name).where(':id').startsWith(DEMO).count();
+  return n;
+}
+/** Takes the test data off this device (real data is never touched: test ids start with "demo-"). */
+export async function removeDemoLocal(): Promise<number> {
+  let n = 0;
+  await db.transaction('rw', DATA_TABLES.map((t) => db.table(t)), async () => {
+    for (const name of DATA_TABLES) n += await db.table(name).where(':id').startsWith(DEMO).delete();
+  });
+  return n;
+}

@@ -45,7 +45,12 @@ token never goes in the repo or chat). The app syncs only when opened from the s
 header `SyncBadge`); on GitHub Pages it stays device-only. Updates: the compose file's
 `watchtower` (maintained fork `nickfedor/watchtower`, label-scoped, hourly) restarts the server on a
 new image; open pages show "Ladda om" when the published index.html loads another script
-(`src/update.ts`, `ui/UpdateBar.tsx`). Later: the company's Raspberry Pi.
+(`src/update.ts`, `ui/UpdateBar.tsx`). The image's web build runs natively
+(`--platform=$BUILDPLATFORM`; building it under arm64 emulation hung). **Test data** (Admin →
+Testdata; `domain/demo.ts` + tests): made-up weeks around today, every id starting `demo-`;
+"Ta bort testdata" calls the server's `/api/demo/remove` (deletes demo rows, notes
+`demoRemovedAt`, refuses older demo records), and each device drops its copies at its next sync
+(`removeDemoLocal`). Later: the company's Raspberry Pi.
 
 **Kontor (built): the office** (`ui/OfficeView.tsx`, `ui/OrderEditor.tsx` shared with Produktion,
 `domain/office.ts` + tests), managers only (same gate as Produktion), for computer, tablet and

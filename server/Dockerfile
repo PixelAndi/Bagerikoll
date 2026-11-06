@@ -1,6 +1,8 @@
 # Bagerikoll's server: the app itself + sync, data in SQLite under /data.
 # Built by .github/workflows/server.yml → ghcr.io/pixelandi/bagerikoll-server.
-FROM node:22-alpine AS build
+# The app is built once, natively (it is the same files on every platform); only the runtime below
+# is made per platform. Building it under emulation for arm64 was slow and could hang.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci

@@ -1,7 +1,11 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { useApp } from '../app-context.ts';
 import { BRAND_COLORS, useCatalog } from '../data.ts';
-import { db, newId } from '../db.ts';
+import { DATA_TABLES, db, demoCount, newId } from '../db.ts';
+import { todayLocal } from '../days.ts';
+import { demoData } from '../domain/demo.ts';
+import { removeDemoEverywhere, syncEnabled } from '../sync.ts';
 import { hashPin } from '../domain/pin.ts';
 import type { Product } from '../domain/types.ts';
 import { palletLayers } from '../domain/pallet.ts';
@@ -44,6 +48,7 @@ export function AdminView() {
       {!settings.locked && <Station />}
       <CountQrSettings />
       <ChangePin />
+      <TestData />
     </Page>
   );
 }
@@ -366,6 +371,53 @@ function Station() {
           </button>
         ))}
       </div>
+    </Card>
+  );
+}
+
+/**
+ * Test data: a few made-up weeks to see every page filled in (src/domain/demo.ts), and the way to
+ * take it off again – from the server and so from every device, real data untouched.
+ */
+function TestData() {
+  const { t, settings } = useApp();
+  const count = useLiveQuery(() => demoCount(), []) ?? 0;
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState('');
+  const add = async () => {
+    if (!confirm(t('demo.addConfirm'))) return;
+    setBusy(true);
+    const data = demoData(todayLocal(), Date.now(), (day, hh, mm) => new Date(`${day}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`).getTime());
+    await db.transaction('rw', DATA_TABLES.map((n) => db.table(n)), async () => {
+      for (const [name, rows] of Object.entries(data)) await db.table(name).bulkPut(rows);
+    });
+    setBusy(false);
+    setDone(t('demo.added'));
+  };
+  const remove = async () => {
+    if (!confirm(t('demo.removeConfirm'))) return;
+    setBusy(true);
+    try {
+      await removeDemoEverywhere(settings.station);
+      setDone(t(syncEnabled() ? 'demo.removedEverywhere' : 'demo.removedHere'));
+    } catch {
+      setDone(t('demo.removeFailed'));
+    }
+    setBusy(false);
+  };
+  return (
+    <Card title={t('demo.title')}>
+      <p className="small muted">{t('demo.hint')}</p>
+      <p>{count ? t('demo.count', { n: count }) : t('demo.none')}</p>
+      <div className="button-row">
+        <button type="button" className="button" disabled={busy} onClick={() => void add()}>
+          {t(count ? 'demo.addAgain' : 'demo.add')}
+        </button>
+        <button type="button" className="button" disabled={busy || (!count && !syncEnabled())} onClick={() => void remove()}>
+          🗑 {t('demo.remove')}
+        </button>
+      </div>
+      {done && <p className="small">{done}</p>}
     </Card>
   );
 }

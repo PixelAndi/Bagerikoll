@@ -32,6 +32,22 @@ export function openStore(path) {
 }
 
 const currentSeq = (db) => Number(db.prepare(`SELECT value FROM meta WHERE key = 'seq'`).get()?.value ?? 0);
+const metaNumber = (db, key) => Number(db.prepare(`SELECT value FROM meta WHERE key = ?`).get(key)?.value ?? 0);
+const setMeta = (db, key, value) => db.prepare(`INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value`).run(key, String(value));
+
+/** Test data (src/domain/demo.ts): every record's id starts with this. */
+export const DEMO_PREFIX = 'demo-';
+
+/**
+ * Takes the test data off: deletes every test record and notes when, so each device deletes its
+ * copies at its next sync (`demoRemovedAt` in the answer) and test records an offline device still
+ * holds are not taken back in. Test data made after this is welcome again.
+ */
+export function removeDemo(db, now = Date.now()) {
+  const removed = db.prepare(`DELETE FROM records WHERE substr(id, 1, ${DEMO_PREFIX.length}) = ?`).run(DEMO_PREFIX).changes;
+  setMeta(db, 'demoRemovedAt', now);
+  return { removed: Number(removed), demoRemovedAt: now };
+}
 
 /**
  * One sync: take what the device sends (records per table), keep the newer copies, and answer with
@@ -43,6 +59,7 @@ export function sync(db, { since = 0, records = {} } = {}) {
     ON CONFLICT (tbl, id) DO UPDATE SET updated_at = excluded.updated_at, seq = excluded.seq, data = excluded.data`);
   let seq = currentSeq(db);
   let accepted = 0;
+  const demoRemovedAt = metaNumber(db, 'demoRemovedAt');
   db.exec('BEGIN IMMEDIATE');
   try {
     for (const tbl of TABLES) {
@@ -51,6 +68,7 @@ export function sync(db, { since = 0, records = {} } = {}) {
       for (const r of list) {
         if (!r || typeof r !== 'object' || typeof r.id !== 'string' || !r.id || r.id.length > 200) continue;
         const updated = Number.isFinite(r.updatedAt) ? Math.trunc(r.updatedAt) : 0;
+        if (demoRemovedAt && updated <= demoRemovedAt && r.id.startsWith(DEMO_PREFIX)) continue;
         const have = get.get(tbl, r.id);
         if (have && updated <= have.updated_at) continue;
         seq += 1;
@@ -69,7 +87,7 @@ export function sync(db, { since = 0, records = {} } = {}) {
   const page = more ? rows.slice(0, PAGE) : rows;
   const out = {};
   for (const row of page) (out[row.tbl] ??= []).push(JSON.parse(row.data));
-  return { seq: page.length ? page[page.length - 1].seq : Math.max(Number(since) || 0, 0) || seq, records: out, more, accepted };
+  return { seq: page.length ? page[page.length - 1].seq : Math.max(Number(since) || 0, 0) || seq, records: out, more, accepted, demoRemovedAt: demoRemovedAt || undefined };
 }
 
 /** Everything as a data file (the app's format), to download or to keep as a backup. */

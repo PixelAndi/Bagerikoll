@@ -46,3 +46,18 @@ describe('the server store', () => {
     expect(readdirSync(dir).sort()).toEqual(['bagerikoll-2030-01-03.json', 'bagerikoll-2030-01-04.json']);
   });
 });
+
+describe('test data', async () => {
+  const { removeDemo } = await import('./store.mjs');
+  it('removes only test records, and keeps old ones from coming back', () => {
+    const db = openStore(':memory:');
+    sync(db, { records: { workers: [{ id: 'demo-w-1', name: 'Test', updatedAt: 100 }, { id: 'w-real', name: 'Riktig', updatedAt: 100 }] } });
+    expect(removeDemo(db, 200)).toEqual({ removed: 1, demoRemovedAt: 200 });
+    // An offline device sends its old copy: refused. New test data later: welcome.
+    const a = sync(db, { records: { workers: [{ id: 'demo-w-1', name: 'Test', updatedAt: 150 }] } });
+    expect(a.accepted).toBe(0);
+    expect(a.demoRemovedAt).toBe(200);
+    expect(sync(db, { records: { workers: [{ id: 'demo-w-2', name: 'Ny test', updatedAt: 300 }] } }).accepted).toBe(1);
+    expect(exportAll(db).tables.workers.map((w) => w.id).sort()).toEqual(['demo-w-2', 'w-real']);
+  });
+});

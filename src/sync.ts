@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { DATA_TABLES, db, localWrites, whileReading } from './db.ts';
+import { DATA_TABLES, db, localWrites, removeDemoLocal, whileReading } from './db.ts';
 import { mergeRecords } from './domain/datafile.ts';
 
 // Sync with Bagerikoll's server (server/), when the app is opened from it. Every device keeps all
@@ -73,8 +73,13 @@ async function round(device: string) {
   let received = 0;
   let first = true;
   for (;;) {
-    const answer = (await api('api/sync', { since, records: first ? records : {}, device })) as { seq: number; records: Record<string, { id: string; updatedAt?: number }[]>; more: boolean };
+    const answer = (await api('api/sync', { since, records: first ? records : {}, device })) as { seq: number; records: Record<string, { id: string; updatedAt?: number }[]>; more: boolean; demoRemovedAt?: number };
     first = false;
+    // The test data was taken off the server: take this device's copies off too.
+    if (answer.demoRemovedAt && answer.demoRemovedAt > (await meta('sync.demoRemovedAt', 0))) {
+      await removeDemoLocal();
+      await setMeta('sync.demoRemovedAt', answer.demoRemovedAt);
+    }
     await whileReading(() =>
       db.transaction('rw', DATA_TABLES.map((n) => db.table(n)), async () => {
         for (const name of DATA_TABLES) {
@@ -95,6 +100,18 @@ async function round(device: string) {
   }
   await setMeta('sync.pushedAt', started);
   setStatus({ state: 'ok', at: Date.now(), received, error: undefined });
+}
+
+/** Whether this device syncs with a server. */
+export const syncEnabled = () => enabled;
+
+/** Takes the test data off the server (and so off every device, at its next sync), then off this one. */
+export async function removeDemoEverywhere(device: string): Promise<void> {
+  if (enabled) {
+    const r = (await api('api/demo/remove', { device })) as { demoRemovedAt: number };
+    await setMeta('sync.demoRemovedAt', r.demoRemovedAt);
+  }
+  await removeDemoLocal();
 }
 
 /** Sync now (or as soon as the round running now is done). */

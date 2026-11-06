@@ -46,6 +46,12 @@ what count.
 Open pages notice a new version themselves (every 5 minutes and when shown again) and show
 "En ny version av appen finns – Ladda om" (`src/update.ts`). Nothing is lost by reloading.
 
+## Test data
+
+Admin → **Testdata** fills the app with made-up weeks (people, customers, orders, packing,
+loading, prices) and takes it all off again with **Ta bort testdata** – from the server and,
+at their next sync, from every device. Real data is never touched (test ids start with `demo-`).
+
 ## Restoring
 
 - From a snapshot: stop the app, then Datasets → `apps/bagerikoll` → Snapshots → roll back. Start

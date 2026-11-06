@@ -6,7 +6,7 @@
 import { createServer } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, sep } from 'node:path';
-import { backup, exportAll, openStore, sync } from './store.mjs';
+import { backup, exportAll, openStore, removeDemo, sync } from './store.mjs';
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DATA_DIR = process.env.DATA_DIR ?? '/data';
@@ -68,6 +68,11 @@ createServer(async (req, res) => {
       const body = JSON.parse((await readBody(req)) || '{}');
       const result = sync(db, body);
       if (result.accepted) console.log(`sync ${body.device ?? '?'}: ${result.accepted} in`);
+      return send(res, 200, result);
+    }
+    if (path === '/api/demo/remove' && req.method === 'POST') {
+      const result = removeDemo(db);
+      console.log(`test data removed: ${result.removed} records`);
       return send(res, 200, result);
     }
     if (path === '/api/export' && req.method === 'GET') {
