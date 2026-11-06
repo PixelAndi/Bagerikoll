@@ -104,13 +104,28 @@ to the time and the product being packed.
 ## Known limits and open decisions (raise these with the owner)
 
 1. **Each device keeps its own data.** For now devices swap a data file (Mer → Datafil).
-   The owner wants a local server – to discuss with the boss before building it.
+   Server plan discussed with the owner (not built; waiting for the boss): a **Raspberry Pi**
+   (Pi 4/5 booting from an SSD, not an SD card) running a small sync server (SQLite); outside
+   devices reach it through **Cloudflare Tunnel + Access** (no open ports, one https address,
+   per-person logins; needs a domain); every device keeps a full copy with persistent storage
+   and ~14 dated snapshots, so the devices are the backup – the managers' phones, which leave
+   the building, are the off-site copy; packing protocols also exported weekly off-device
+   (compliance). Store only names for employees.
 5. **Missed pallets.** The owner is looking for a way to never miss a pallet. Built so far:
    the 1.5 s rest after a pallet tap, and "Att kolla" flags a day that gave clearly less than its
    doughs usually do. Ideas raised: a reminder when no pallet has come for longer than usual;
-   a label (with QR) printed per pallet, tying into the planned QR loading check.
-6. **Shipping** is not decided (idea: QR on each pallet, a webcam checks what is loaded).
-   Until then an order is marked "Lastad" by hand.
+   a pallet label printed per pallet (possible once the Android app exists).
+6. **Shipping: QR scanning at the loading dock is dropped** (the owner: too difficult and
+   expensive). The dock relies on the loaders and the forklift driver checking each product
+   ("Lastas just nu") and reporting what is missing.
+9. **Android app for the tablets – decided, not built yet.** Wrap the same web code with
+   Capacitor; keep the browser version for iPhones and laptops. Plan: GitHub Actions builds the
+   APK; the app updates its web code by itself from the live site (bundled code + self-hosted
+   live update with rollback), so ordinary changes need no reinstall; only native shell
+   changes (permissions, kiosk, new plugins) need a new APK installed on each tablet. Gains:
+   storage the browser can't clear, real kiosk (lock task mode, start on boot), file backups to
+   the tablet/USB, later notifications and label printing. Ask the owner for the tablet model
+   and have it at hand when building – kiosk and layout must be tried on the device.
 7. **Orders** are typed in by hand from the paper list; later they should come in
    automatically and the managers only confirm the production list.
 8. **Compliance sign-off.** The protocol mirrors the paper form, but the bakery's quality lead

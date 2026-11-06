@@ -32,7 +32,10 @@ doughs per product per day, deviations (scrapped / low yield / other), stock (co
 ± loaded; "Lastad" on an order stands in for shipping), and the plan: doughs = need ÷ usual
 yield, rounded up, with the chance it's enough. Deviation days are kept out of the yield.
 Behind the PIN, or open on a phone marked as a manager's phone in Admin. Out of scope until
-the owner says: raw materials, ingredients, shipping/QR loading, automatic order import.
+the owner says: raw materials, ingredients, automatic order import. **QR scanning at the dock is
+dropped** (owner's decision) – the dock relies on per-product verification. **Decided, not built:**
+an Android app for the tablets (Capacitor, same code, self-updating web code) and a Raspberry Pi
+sync server – see HANDOVER.md items 1 and 9.
 
 **Kontor (built): the office** (`ui/OfficeView.tsx`, `ui/OrderEditor.tsx` shared with Produktion,
 `domain/office.ts` + tests), managers only (same gate as Produktion), for computer, tablet and

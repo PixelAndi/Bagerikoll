@@ -165,8 +165,8 @@ station). The production day is the packing day.
   days; under 5 days it leans on the expected pallets per dough set in Admin (default 1) and
   says "lite historik". The chance is a normal distribution over the day-to-day spread.
 - **Orders** are copied from the paper list: customer, then pallets per product (boxes when
-  needed). Marking an order **Lastad** takes it out of stock – the stand-in for shipping until
-  the QR/loading system exists.
+  needed). Marking an order **Lastad** (at the loading dock, product by product) takes it out of
+  stock.
 - **Doughs and deviations.** Doughs per product per day; deviations: scrapped (how many, and
   the day they're made again), low yield (unexplained), other.
 - **Stock** = the latest count (Inventera) ± what was packed and loaded since.
