@@ -51,6 +51,8 @@ export interface Product {
   palletsPerDough?: number;
   /** Prices for accounting, each from a day on (the one in force on an order's day is used). */
   prices?: Price[];
+  /** What the product costs the bakery to make (raw materials, packaging …), per pallet and/or box, each from a day on – for the profit. */
+  costs?: Price[];
   hidden?: boolean;
   updatedAt?: number;
 }

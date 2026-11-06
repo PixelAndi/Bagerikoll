@@ -7,7 +7,7 @@ import { db, newId } from '../db.ts';
 import { deliveredDiffers, deliveredLines } from '../domain/accounting.ts';
 import { checkOf, deliveredFromChecks, deliveries, loadLines, loadProgress, shortLoaded, withCheck, type Delivery } from '../domain/dock.ts';
 import { orderTotals } from '../domain/office.ts';
-import { lineBoxesPerPallet } from '../domain/pallet.ts';
+import { lineBoxesPerPallet, stackPlan } from '../domain/pallet.ts';
 import type { Deviation, Order, Session } from '../domain/types.ts';
 import { Field, Modal, Notice, Page } from './common.tsx';
 import { Stepper } from './OrderEditor.tsx';
@@ -407,7 +407,7 @@ function NowLoading({ order, session, deviations }: { order: Order; session: Ses
                   </span>
                 )}
               </span>
-              {per && l.pallets > 0 ? <PalletBadge boxes={per} perLayer={p?.boxesPerLayer} label={t('pallet.short', { boxes: per })} unit={0.42} /> : <span />}
+              {per && l.pallets > 0 ? <StackBadge pallets={l.pallets} per={per} perLayer={p?.boxesPerLayer} /> : <span />}
               <span className="dock-now-actions">
                 {c ? (
                   <>
@@ -561,5 +561,18 @@ function LoadingDeviation({ order, crew, onClose }: { order: Order; crew: string
         {t('dock.report')}
       </button>
     </Modal>
+  );
+}
+
+/** How a product's pallets go on the truck: the picture of a stack of two (or one) and "3 × 2 staplade + 1". */
+function StackBadge({ pallets, per, perLayer }: { pallets: number; per: number; perLayer?: number }) {
+  const { t } = useApp();
+  const plan = stackPlan(pallets, per, perLayer);
+  const label = plan.pairs ? [t('pallet.pairs', { n: plan.pairs }), plan.singles ? t('pallet.singles', { n: plan.singles }) : ''].filter(Boolean).join(' + ') : t('pallet.short', { boxes: per });
+  return (
+    <span className="dock-stack">
+      <PalletBadge boxes={per} perLayer={perLayer} stacked={plan.pairs ? 2 : 1} label={label} unit={plan.pairs ? 0.36 : 0.42} />
+      {plan.pairs > 0 && <span className="small muted">{t('pallet.short', { boxes: per })}</span>}
+    </span>
   );
 }

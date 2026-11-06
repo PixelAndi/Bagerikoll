@@ -60,8 +60,21 @@ export interface LineCalc {
 }
 
 export function lineCalc(line: Pick<OrderLine, 'pallets' | 'boxes' | 'boxesPerPallet'>, product: Product | undefined, day: LocalDate, customerId?: string): LineCalc {
+  return calcWith(line, product, priceOn(product, day, customerId));
+}
+
+/** The cost in force on a day (the latest one from that day or before; costs are the same for every customer). */
+export function costOn(product: Product | undefined, day: LocalDate): Price | undefined {
+  return (product?.costs ?? []).filter((p) => p.from <= day).sort((a, b) => (a.from < b.from ? 1 : -1))[0];
+}
+
+/** What a line costs the bakery to make, worked out as the amount is (pallets and boxes). */
+export function lineCost(line: Pick<OrderLine, 'pallets' | 'boxes' | 'boxesPerPallet'>, product: Product | undefined, day: LocalDate): LineCalc {
+  return calcWith(line, product, costOn(product, day));
+}
+
+function calcWith(line: Pick<OrderLine, 'pallets' | 'boxes' | 'boxesPerPallet'>, product: Product | undefined, price: Price | undefined): LineCalc {
   const per = line.boxesPerPallet ?? product?.boxesPerPallet;
-  const price = priceOn(product, day, customerId);
   const base: LineCalc = { pallets: line.pallets, boxes: line.boxes, boxesPerPallet: per, price };
   if (!line.pallets && !line.boxes) return { ...base, amount: 0 };
   if (!price) return { ...base, missing: 'price' };

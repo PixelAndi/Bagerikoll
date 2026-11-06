@@ -55,12 +55,15 @@ only that page and the Admin tab, where "Lämna kioskläget" (PIN) unlocks. **Ek
 (`ui/AccountingView.tsx`, `domain/accounting.ts`, `domain/accountingSheet.ts`, `src/xlsx.ts` – a
 dependency-free .xlsx writer; tests): the week complete when every order is loaded; bills what the
 dock reported (`Order.delivered`); each line's calculation shown (`lineCalc`, `explain`);
-accounting sets prices (`ui/PriceEditor.tsx`; Admin no longer edits prices); Excel file with
+accounting sets prices and costs (`ui/PriceEditor.tsx`; `Product.costs`, `lineCost`; Admin no
+longer edits prices); "Veckans vinst" (`profitOf`, `profitBy`) – revenue, cost, gross profit,
+margin per day/customer/product; Excel file with
 formulas (verify changes by recalculating with LibreOffice, `soffice --convert-to csv`). **Lastkaj** (`ui/DockView.tsx`, `domain/dock.ts` + tests): today's deliveries; loaders
 (several) and one forklift driver check in (`Session.kind 'dock'`, `driverId`); "Lastas just nu"
 (`Session.loadingOrderId`) checks each product (`Order.lineChecks`: ok / notDelivered / short with
 missing boxes, `shortLoaded`); "Klar" sets `shippedAt` + `loadedBy` + `delivered` (from the checks)
-and makes a deviation per problem; `loading` deviations go to the managers (`ui/LoadingDeviations.tsx` in
+and makes a deviation per problem; pallets up to 5 layers show stacked two and two (`stackPlan`,
+an assumption – ask the owner if exceptions need a setting); `loading` deviations go to the managers (`ui/LoadingDeviations.tsx` in
 Kontor and Produktion) until marked handled. **Boxes per pallet** can be set per order line while
 planning (`OrderLine.boxesPerPallet`, `domain/pallet.ts`); a run takes it from the order chosen
 at its start (`Run.orderId/boxesPerPallet`) and shows it with `PalletIcon` (EUR pallet, 4 boxes a

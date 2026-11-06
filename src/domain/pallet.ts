@@ -29,3 +29,16 @@ export function boxCountOptions(product: Product, orders: Order[], customerId?: 
   const used = [...tally].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(([n]) => n);
   return [...new Set([...(product.boxesPerPallet ? [product.boxesPerPallet] : []), ...used])].slice(0, 6);
 }
+
+/** Pallets up to this many layers high are stacked two and two (the usual way for the 20-box pallets). */
+export const STACK_MAX_LAYERS = 5;
+
+/**
+ * How a product's pallets go: in stacks of two when a pallet is low enough (two full pallets of
+ * 20 on top of each other is how most are stored and shipped), else one by one.
+ */
+export function stackPlan(pallets: number, boxesPerPallet: number | undefined, perLayer = DEFAULT_PER_LAYER) {
+  const n = Math.max(0, Math.round(pallets));
+  const stackable = !!boxesPerPallet && palletLayers(boxesPerPallet, perLayer).layers <= STACK_MAX_LAYERS;
+  return stackable ? { stackable, pairs: Math.floor(n / 2), singles: n % 2 } : { stackable, pairs: 0, singles: n };
+}

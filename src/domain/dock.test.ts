@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deliveredFromChecks, deliveries, loadProgress, openLoadingDeviations, shortLoaded, withCheck } from './dock.ts';
-import { boxCountOptions, lineBoxesPerPallet, palletLayers } from './pallet.ts';
+import { boxCountOptions, lineBoxesPerPallet, palletLayers, stackPlan } from './pallet.ts';
 import type { Deviation, Order, Product } from './types.ts';
 
 // Made-up names and numbers only.
@@ -12,6 +12,15 @@ describe('pallet layers', () => {
     expect(palletLayers(30)).toEqual({ full: 7, top: 2, layers: 8, perLayer: 4 });
     expect(palletLayers(40, 4).layers).toBe(10);
     expect(palletLayers(30, 6).layers).toBe(5);
+  });
+});
+
+describe('stacking', () => {
+  it('stacks low pallets two and two, tall ones one by one', () => {
+    expect(stackPlan(7, 20)).toEqual({ stackable: true, pairs: 3, singles: 1 });
+    expect(stackPlan(4, 40)).toEqual({ stackable: false, pairs: 0, singles: 4 });
+    expect(stackPlan(1, 20)).toEqual({ stackable: true, pairs: 0, singles: 1 });
+    expect(stackPlan(2, undefined).stackable).toBe(false);
   });
 });
 

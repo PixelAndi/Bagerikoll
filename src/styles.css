@@ -1825,3 +1825,30 @@ input[type='checkbox'] {
   .dock-now-foot .dock-finish { grid-column: 1 / -1; }
   .dock-now-customer { font-size: 1.8rem; }
 }
+
+.dock-stack { display: flex; flex-direction: column; align-items: center; gap: 0; }
+
+/* Ekonomi: the week's profit. */
+.profit-numbers { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.profit-numbers strong { font-size: 1.4rem; }
+.profit-big { font-size: 1.9rem !important; }
+@media (max-width: 560px) { .profit-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.profit-ok { color: var(--cal-worked-strong); }
+.profit-low { color: var(--cal-missing-strong); }
+.profit-bad { color: var(--error); }
+.profit-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 12px 0 6px; }
+.profit-day { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 84px; padding: 6px 2px; border-radius: 10px; background: var(--cal-empty); overflow: hidden; color: var(--text); text-align: center; }
+.profit-day::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: var(--h); opacity: 0.35; }
+.profit-day.profit-ok::before { background: var(--cal-worked-strong); }
+.profit-day.profit-low::before { background: var(--cal-missing-strong); }
+.profit-day.profit-bad::before { background: var(--error); }
+.profit-day > * { position: relative; }
+.profit-day strong { font-size: 0.95rem; white-space: nowrap; }
+.profit-day.profit-ok, .profit-day.profit-low, .profit-day.profit-bad { color: var(--text); }
+.profit-table td, .profit-table th { white-space: nowrap; }
+.margin-bar { display: flex; align-items: center; gap: 6px; min-width: 120px; }
+.margin-bar i { display: block; height: 10px; border-radius: 5px; min-width: 2px; }
+.margin-bar i.profit-ok { background: var(--cal-worked-strong); }
+.margin-bar i.profit-low { background: var(--cal-missing-strong); }
+.margin-bar i.profit-bad { background: var(--error); }
+.cost-row { grid-template-columns: 1.3fr 1fr 1fr auto; }

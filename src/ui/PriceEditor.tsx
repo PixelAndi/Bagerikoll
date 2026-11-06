@@ -6,9 +6,10 @@ import { db } from '../db.ts';
 import type { Product } from '../domain/types.ts';
 import { Modal } from './common.tsx';
 
-// A product's prices, set by accounting: per customer (or the standard price for customers
-// without their own), per pallet and/or per box, each from a date – older orders keep the price
-// of their day.
+// A product's prices and costs, set by accounting. Prices: per customer (or the standard price for
+// customers without their own), per pallet and/or per box, each from a date – older orders keep
+// the price of their day. Costs (what it costs to make: raw materials, packaging …): the same for
+// every customer, per pallet and/or per box, each from a date – for the profit.
 
 export function PriceEditor({ product, onClose }: { product: Product; onClose: () => void }) {
   const { t } = useApp();
@@ -20,7 +21,8 @@ export function PriceEditor({ product, onClose }: { product: Product; onClose: (
   };
   const saveIt = async () => {
     const prices = (p.prices ?? []).filter((x) => x.from && (x.perPallet !== undefined || x.perBox !== undefined)).sort((a, b) => (a.customerId ?? '').localeCompare(b.customerId ?? '') || (a.from < b.from ? -1 : 1));
-    await db.products.update(product.id, { prices });
+    const costs = (p.costs ?? []).filter((x) => x.from && (x.perPallet !== undefined || x.perBox !== undefined)).sort((a, b) => (a.from < b.from ? -1 : 1));
+    await db.products.update(product.id, { prices, costs });
     onClose();
   };
   return (
@@ -60,6 +62,32 @@ export function PriceEditor({ product, onClose }: { product: Product; onClose: (
         ))}
         <button type="button" className="button button-small" onClick={() => setP({ ...p, prices: [...(p.prices ?? []), { from: todayLocal(), customerId: p.customerIds?.length === 1 ? p.customerIds[0] : undefined }] })}>
           + {t('admin.newPrice')}
+        </button>
+      </div>
+      <div className="field">
+        <span className="field-label">{t('accounting.costs')}</span>
+        <span className="field-hint">{t('accounting.costsHint')}</span>
+        {(p.costs ?? []).map((x, i) => (
+          <div key={i} className="price-row cost-row">
+            <label>
+              <span className="small muted">{t('admin.priceFrom')}</span>
+              <input type="date" value={x.from} onChange={(e) => setP({ ...p, costs: p.costs!.map((y, j) => (j === i ? { ...y, from: e.target.value } : y)) })} />
+            </label>
+            <label>
+              <span className="small muted">{t('admin.perPallet')}</span>
+              <input type="text" inputMode="decimal" defaultValue={x.perPallet ?? ''} onChange={(e) => setP({ ...p, costs: p.costs!.map((y, j) => (j === i ? { ...y, perPallet: num(e.target.value) } : y)) })} />
+            </label>
+            <label>
+              <span className="small muted">{t('admin.perBox')}</span>
+              <input type="text" inputMode="decimal" defaultValue={x.perBox ?? ''} onChange={(e) => setP({ ...p, costs: p.costs!.map((y, j) => (j === i ? { ...y, perBox: num(e.target.value) } : y)) })} />
+            </label>
+            <button type="button" className="link-button small" onClick={() => setP({ ...p, costs: p.costs!.filter((_, j) => j !== i) })}>
+              {t('prod.removeDeviation')}
+            </button>
+          </div>
+        ))}
+        <button type="button" className="button button-small" onClick={() => setP({ ...p, costs: [...(p.costs ?? []), { from: todayLocal() }] })}>
+          + {t('accounting.newCost')}
         </button>
       </div>
       <button type="button" className="button button-primary pack-start" onClick={() => void saveIt()}>

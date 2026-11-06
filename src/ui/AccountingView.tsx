@@ -4,9 +4,9 @@ import { useApp } from '../app-context.ts';
 import { useCatalog } from '../data.ts';
 import { addDays, isoWeek, mondayOf, todayLocal, type LocalDate } from '../days.ts';
 import { db } from '../db.ts';
-import { accountingRows, deliveredDiffers, deliveredOrders, weekStatus, type AccountingRow } from '../domain/accounting.ts';
+import { accountingRows, deliveredDiffers, deliveredOrders, profitBy, profitOf, weekStatus, type AccountingRow, type Profit } from '../domain/accounting.ts';
 import { accountingWorkbook, explain } from '../domain/accountingSheet.ts';
-import { accountingSummary, orderTotals, priceOn } from '../domain/office.ts';
+import { accountingSummary, costOn, orderTotals, priceOn } from '../domain/office.ts';
 import type { Product } from '../domain/types.ts';
 import { xlsx } from '../xlsx.ts';
 import { Card, Notice, Page } from './common.tsx';
@@ -166,6 +166,8 @@ function Accounting() {
         </Card>
       )}
 
+      <ProfitSection rows={rows} days={days} dayName={dayName} />
+
       <div className="office-week acc-week">
         {days.map((d) => {
           const list = rows.filter((r) => r.day === d);
@@ -223,7 +225,7 @@ function Accounting() {
       </section>
 
       <section className="card">
-        <h2 className="card-title">{t('accounting.prices')}</h2>
+        <h2 className="card-title">{t('accounting.pricesAndCosts')}</h2>
         <p className="small muted">{t('admin.pricesHint')}</p>
         <ul className="product-rows">
           {[...products]
@@ -242,10 +244,15 @@ function Accounting() {
                           return `${name}: ${price ? [price.perPallet !== undefined ? `${money(price.perPallet)}/pall` : '', price.perBox !== undefined ? `${money(price.perBox)}/kart.` : ''].filter(Boolean).join(', ') + (price.customerId ? '' : ` (${t('pallet.standard')})`) : t('office.noPriceShort')}`;
                         }).join(' · ')
                       : t('admin.noCustomer')}
+                    <br />
+                    {(() => {
+                      const c = costOn(p, today);
+                      return c ? t('accounting.costLine', { cost: [c.perPallet !== undefined ? `${money(c.perPallet)}/pall` : '', c.perBox !== undefined ? `${money(c.perBox)}/kart.` : ''].filter(Boolean).join(', ') }) : t('accounting.noCost');
+                    })()}
                   </span>
                 </span>
                 <button type="button" className="button" onClick={() => setPricing(p)}>
-                  {t('accounting.setPrice')}
+                  {t('accounting.setPriceCost')}
                 </button>
               </li>
             ))}
@@ -294,5 +301,108 @@ function RowsTable({ rows, dayName }: { rows: AccountingRow[]; dayName: (d: Loca
         ))}
       </tbody>
     </table>
+  );
+}
+
+const pct = (m?: number) => (m === undefined ? '–' : `${(m * 100).toLocaleString('sv-SE', { maximumFractionDigits: 1 })} %`);
+const marginClass = (m?: number) => (m === undefined ? '' : m < 0 ? 'profit-bad' : m < 0.15 ? 'profit-low' : 'profit-ok');
+
+/**
+ * Veckans vinst: what was delivered, less what it cost to make – big numbers for the week, each
+ * day as a square (green = profit, red = loss), and the week per customer and per product, the
+ * most profitable first. Rows without a price or a cost are left out and named.
+ */
+function ProfitSection({ rows, days, dayName }: { rows: AccountingRow[]; days: LocalDate[]; dayName: (d: LocalDate) => string }) {
+  const { t } = useApp();
+  const week = profitOf(rows);
+  const noCost = [...new Set(rows.filter((r) => r.cost.amount === undefined).map((r) => r.product?.name ?? '?'))];
+  const byCustomer = profitBy(rows, (r) => r.customer?.name ?? '?');
+  const byProduct = profitBy(rows, (r) => r.product?.name ?? '?');
+  const maxDay = Math.max(1, ...days.map((d) => Math.abs(profitOf(rows.filter((r) => r.day === d)).profit)));
+  return (
+    <section className="card profit-card">
+      <div className="cal-focus-head">
+        <strong>{t('accounting.profitTitle')}</strong>
+        <span className="small muted">{t('accounting.profitSub')}</span>
+      </div>
+      <div className="cal-numbers profit-numbers">
+        <div>
+          <strong>{money(week.revenue)}</strong>
+          <span className="small muted">{t('accounting.revenue')}</span>
+        </div>
+        <div>
+          <strong>{money(week.cost)}</strong>
+          <span className="small muted">{t('accounting.cost')}</span>
+        </div>
+        <div>
+          <strong className={`profit-big ${marginClass(week.margin)}`}>{money(week.profit)}</strong>
+          <span className="small muted">{t('accounting.grossProfit')}</span>
+        </div>
+        <div>
+          <strong className={`profit-big ${marginClass(week.margin)}`}>{pct(week.margin)}</strong>
+          <span className="small muted">{t('accounting.margin')}</span>
+        </div>
+      </div>
+      {noCost.length > 0 && <p className="small warn-text">{t('accounting.noCostRows', { n: week.incomplete, products: noCost.join(', ') })}</p>}
+      <div className="profit-days">
+        {days.map((d) => {
+          const p = profitOf(rows.filter((r) => r.day === d));
+          const has = p.revenue > 0;
+          return (
+            <span key={d} className={`profit-day ${has ? marginClass(p.margin) : 'profit-none'}`} style={{ ['--h' as string]: `${has ? Math.max(8, (Math.abs(p.profit) / maxDay) * 100) : 0}%` }}>
+              <span className="small">{dayName(d).split(' ')[0]}</span>
+              <strong>{has ? kr0(p.profit) : '–'}</strong>
+              <span className="small">{has ? pct(p.margin) : ''}</span>
+            </span>
+          );
+        })}
+      </div>
+      <h3 className="prod-sub">{t('accounting.perCustomer')}</h3>
+      <ProfitTable groups={byCustomer} first={t('pack.customer')} />
+      <h3 className="prod-sub">{t('accounting.perProduct')}</h3>
+      <ProfitTable groups={byProduct} first={t('protocol.product')} pallets />
+    </section>
+  );
+}
+
+const kr0 = (n: number) => `${Math.round(n).toLocaleString('sv-SE')} kr`;
+
+function ProfitTable({ groups, first, pallets = false }: { groups: { key: string; profit: Profit }[]; first: string; pallets?: boolean }) {
+  const { t } = useApp();
+  const best = Math.max(0.0001, ...groups.map((g) => g.profit.margin ?? 0));
+  return (
+    <div className="proto-scroll">
+      <table className="proto-table profit-table">
+        <thead>
+          <tr>
+            <th>{first}</th>
+            {pallets && <th className="num">{t('pack.palletsWord')}</th>}
+            <th className="num">{t('accounting.revenue')}</th>
+            <th className="num">{t('accounting.cost')}</th>
+            <th className="num">{t('accounting.grossProfit')}</th>
+            <th>{t('accounting.margin')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((g) => (
+            <tr key={g.key}>
+              <td>{g.key}</td>
+              {pallets && <td className="num">{g.profit.pallets}</td>}
+              <td className="num">{money(g.profit.revenue)}</td>
+              <td className="num">{money(g.profit.cost)}</td>
+              <td className={`num ${marginClass(g.profit.margin)}`}>
+                <strong>{money(g.profit.profit)}</strong>
+              </td>
+              <td>
+                <span className="margin-bar">
+                  <i className={marginClass(g.profit.margin)} style={{ width: `${Math.max(0, ((g.profit.margin ?? 0) / best) * 100)}%` }} />
+                  <span>{pct(g.profit.margin)}</span>
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

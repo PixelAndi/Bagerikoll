@@ -83,7 +83,12 @@ to confirm; keep the paper form alongside until they have.
   kart. × 95,00 kr = 5 700,00 kr"); deliveries not loaded yet are marked. **What the dock reported
   is billed** (it can differ from the order), with the order's boxes per pallet.
 - **Prices are set here** by accounting: per customer (or a standard price), per pallet and/or
-  per box, each from a date.
+  per box, each from a date – and **costs** (what a product costs to make: raw materials,
+  packaging …, per pallet and/or box, from a date, the same for every customer).
+- **Veckans vinst**: revenue, cost, gross profit and margin for the week in big figures, each day
+  as a square (green = profit, yellow = thin margin under 15 %, red = loss), and the week per
+  customer and per product, the most profitable first, with a margin bar. Rows without a price
+  or a cost are left out and named.
 - **Excel file (.xlsx)**: sheet *Leveranser* in calendar order – day, order no., customer,
   billing company, product, pallets, boxes per pallet, boxes, pallet price, box price, amount and
   the calculation in words – with the prices worked out from each other and the amounts, day sums
@@ -101,7 +106,8 @@ to confirm; keep the paper form alongside until they have.
   in can't leave (finish the session instead).
 - **Lastas just nu**: "Börja lasta" on a delivery brings it to the top in a highlighted card –
   the customer's name and the pallet total big, and **every product on the order as its own row**
-  (pallets, boxes, the pallet's height). Each product is ticked **✓ Lastad**, or reported
+  (pallets, boxes, the pallet's height – pallets of up to 5 layers, i.e. 20 large boxes, are
+  shown stacked two and two, "3 × 2 staplade + 1"; taller ones one by one). Each product is ticked **✓ Lastad**, or reported
   **Saknas**: *not delivered* (nothing of it) or *boxes missing* (how many – the app works out
   what was loaded: missing boxes come off the extra boxes first, then off the pallets). "Ändra"
   takes a tick back; "Pausa" leaves the delivery half-checked to go on later.
