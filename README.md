@@ -115,7 +115,7 @@ line's amount, Ändra and Flytta.
 
 ## Ekonomi (accounting)
 
-**Skriv ut** prints the week as day columns, black on white, thin rules, no fills, A4 landscape, for minimal ink. Two options: **Skriv ut veckan** (delivered quantities, amounts, day/week totals and the invoice basis per billing company) and **Orderbok** (just the orders — ordered quantities, no prices).
+**Skriv ut** prints the week as day columns, black on white, thin rules, no fills, A4 landscape, for minimal ink. Two options: **Skriv ut veckan** (delivered quantities, amounts, day/week totals and the invoice basis per billing company) and **Orderbok** (just the orders — ordered quantities, no prices; the bread weight shown apart from the name, long names truncated, and shipping weights per order/day/week: gross incl. the pallet, and the boxes without the pallet, for booking in Nshift). The weight comes from two product fields (grams per bread, breads per box) set in Admin.
 
 
 - **A week at a time, in calendar order.** At the top: whether the week is **complete** – every

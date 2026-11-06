@@ -6,6 +6,7 @@ import { addDays, isoWeek, mondayOf, todayLocal, type LocalDate } from '../days.
 import { db } from '../db.ts';
 import { accountingRows, deliveredLines, deliveredOrders, profitBy, profitOf, weekStatus, type AccountingRow, type Profit } from '../domain/accounting.ts';
 import { accountingWorkbook } from '../domain/accountingSheet.ts';
+import { linesWeight, ordersWeight } from '../domain/weight.ts';
 import { accountingSummary, billerCode, costOn, lineCalc, orderTotals, priceOn } from '../domain/office.ts';
 import type { Brand, Customer, Order, Product } from '../domain/types.ts';
 import { xlsx } from '../xlsx.ts';
@@ -257,6 +258,9 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
     const b = brands.find((x) => x.id === customers.find((c) => c.id === o.customerId)?.billedBy);
     return b ? billerCode(b) : '';
   };
+  const kg = (n: number) => `${n.toLocaleString('sv-SE', { maximumFractionDigits: 1 })} kg`;
+  const weightOf = (o: Order) => linesWeight(linesOf(o), product);
+  const weekW = ordersWeight(live.map((o) => ({ lines: linesOf(o) })), product);
   const weekAmount = live.reduce((s, o) => s + orderAmount(o).amount, 0);
   const weekPallets = live.reduce((s, o) => s + orderPallets(o), 0);
   // Split the week by billing company over the same orders as the totals (not delivered-only), so it reconciles.
@@ -276,17 +280,18 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
   const billerTotals = [...billerMap.values()].map((b) => ({ ...b, pallets: billerPallets.get(b.brand?.id ?? 'none') ?? 0 })).sort((a, b) => (a.brand?.name ?? 'ÿ').localeCompare(b.brand?.name ?? 'ÿ', 'sv'));
 
   return (
-    <section className="week-sheet">
+    <section className={`week-sheet ${amounts ? '' : 'book'}`}>
       <div className="week-cols" style={{ ['--cols' as string]: String(days.length) }}>
         {days.map((d) => {
           const list = byDay(d);
           const pallets = list.reduce((s, o) => s + orderPallets(o), 0);
           const amount = list.reduce((s, o) => s + orderAmount(o).amount, 0);
+          const dayW = ordersWeight(list.map((o) => ({ lines: linesOf(o) })), product);
           return (
             <div key={d} className="week-day">
               <div className="week-day-head">
                 <span className="week-day-name">{dayName(d)}</span>
-                <span className="week-day-tot">{amounts ? `${t('office.orderPallets', { pallets })} · ${money(amount)}` : t('office.orderPallets', { pallets })}</span>
+                <span className="week-day-tot">{amounts ? `${t('office.orderPallets', { pallets })} · ${money(amount)}` : `${t('office.orderPallets', { pallets })} · ${kg(dayW.grossKg)}`}</span>
               </div>
               {!list.length ? (
                 <p className="week-empty">{t('office.noOrdersDay')}</p>
@@ -307,13 +312,16 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
                         const p = product(l.productId);
                         return (
                           <div key={l.productId} className="week-line">
-                            <span className="week-prod">{p?.name ?? '?'}</span>
+                            <span className="week-line-left">
+                              <span className="week-prod">{p?.name ?? '?'}</span>
+                              {!amounts && p?.gramsPerBread ? <span className="week-wt">{p.gramsPerBread} g</span> : null}
+                            </span>
                             <span className="week-qty">{[l.pallets ? t('office.orderPallets', { pallets: l.pallets }) : '', l.boxes ? `${l.boxes} ${t('pack.boxShort')}` : ''].filter(Boolean).join(' ')}</span>
                           </div>
                         );
                       })}
                       <div className="week-order-foot">
-                        <span>{t('office.orderPallets', { pallets: orderPallets(o) })}</span>
+                        <span>{t('office.orderPallets', { pallets: orderPallets(o) })}{!amounts ? ` · ${kg(weightOf(o).grossKg)}` : ''}</span>
                         {amounts && <span>{a.missing ? t('office.noPriceShort') : money(a.amount)}</span>}
                       </div>
                     </div>
@@ -327,6 +335,7 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
       <div className="week-total">
         <span>
           {t('accounting.weekTotal')}: {t('office.orderPallets', { pallets: weekPallets })}
+          {!amounts && ` · ${kg(weekW.grossKg)}`}
         </span>
         <span className="week-total-billers">
           {billerTotals.map((b) => (
@@ -334,9 +343,10 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
               {b.brand ? billerCode(b.brand) : t('office.noBillerName')} {amounts ? money(b.amount) : t('office.orderPallets', { pallets: b.pallets })}
             </span>
           ))}
-          {amounts && <strong>{money(weekAmount)}</strong>}
+          {amounts ? <strong>{money(weekAmount)}</strong> : <strong>{t('accounting.boxesWeight', { kg: kg(weekW.goodsKg) })}{weekW.incomplete ? ' *' : ''}</strong>}
         </span>
       </div>
+      {!amounts && weekW.incomplete && <p className="week-note">* {t('accounting.weightMissing')}</p>}
     </section>
   );
 }

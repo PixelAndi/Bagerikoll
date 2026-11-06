@@ -83,19 +83,29 @@ export function demoData(today: LocalDate, now: number, at: (day: LocalDate, hh:
   const c = (key: string) => id('c', key);
   const from = addDays(mondayOf(today), -63);
   type Money = { perBox?: number; perPallet?: number };
-  const P = (key: string, name: string, code: string, cust: string[], bpp: number, price: Money, cost: Money, special?: [string, Money]): Product => ({
-    id: id('p', key),
-    name,
-    code,
-    customerIds: cust.map(c),
-    boxesPerPallet: bpp,
-    boxesPerLayer: bpp % 4 === 0 ? 4 : bpp % 5 === 0 ? 5 : 4,
-    palletsPerDough: key === 'fullk' ? 2 : 1,
-    prices: [{ from, ...price }, ...(special ? [{ from, customerId: c(special[0]), ...special[1] }] : [])],
-    costs: [{ from, ...cost }],
-    obsBlocked: key === 'pumpa' ? true : undefined,
-    updatedAt: stamp,
-  });
+  // Weight (g/bread, breads/box) kept apart from the name, for the shipping weight; the name's
+  // own weight suffix is dropped so the two don't double up. Packs get explicit figures.
+  const packWeight: Record<string, [number, number]> = { k8p: [640, 12] };
+  const P = (key: string, name: string, code: string, cust: string[], bpp: number, price: Money, cost: Money, special?: [string, Money]): Product => {
+    const m = /\s(\d+)g$/.exec(name);
+    const grams = packWeight[key]?.[0] ?? (m ? Number(m[1]) : undefined);
+    const breadsPerBox = packWeight[key]?.[1] ?? (grams !== undefined ? (grams <= 65 ? 90 : 70) : undefined);
+    return {
+      id: id('p', key),
+      name: m ? name.slice(0, m.index) : name,
+      code,
+      customerIds: cust.map(c),
+      boxesPerPallet: bpp,
+      boxesPerLayer: bpp % 4 === 0 ? 4 : bpp % 5 === 0 ? 5 : 4,
+      gramsPerBread: grams,
+      breadsPerBox,
+      palletsPerDough: key === 'fullk' ? 2 : 1,
+      prices: [{ from, ...price }, ...(special ? [{ from, customerId: c(special[0]), ...special[1] }] : [])],
+      costs: [{ from, ...cost }],
+      obsBlocked: key === 'pumpa' ? true : undefined,
+      updatedAt: stamp,
+    };
+  };
   const products: Product[] = [
     P('ost', 'Ostfralla 70g', '1086', ['gn', 'gs', 'gv'], 20, { perBox: 80 }, { perBox: 52 }),
     P('rosen', 'Rosenbröd 70g', '1045', ['gn', 'gs', 'ck'], 20, { perBox: 95 }, { perBox: 66 }, ['ck', { perBox: 82 }]),

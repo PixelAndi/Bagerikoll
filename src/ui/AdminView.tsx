@@ -248,7 +248,7 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
   const saveIt = async () => {
     if (!p.name.trim()) return;
     const prices = (p.prices ?? []).filter((x) => x.from && (x.perPallet !== undefined || x.perBox !== undefined)).sort((a, b) => (a.customerId ?? '').localeCompare(b.customerId ?? '') || (a.from < b.from ? -1 : 1));
-    await db.products.update(p.id, { name: p.name.trim(), code: p.code?.trim() || undefined, brandId: p.brandId || undefined, customerIds: p.customerIds ?? [], boxesPerPallet: p.boxesPerPallet, boxesPerLayer: p.boxesPerLayer, palletsPerDough: p.palletsPerDough, prices, hidden: p.hidden });
+    await db.products.update(p.id, { name: p.name.trim(), code: p.code?.trim() || undefined, brandId: p.brandId || undefined, customerIds: p.customerIds ?? [], boxesPerPallet: p.boxesPerPallet, boxesPerLayer: p.boxesPerLayer, gramsPerBread: p.gramsPerBread, breadsPerBox: p.breadsPerBox, palletsPerDough: p.palletsPerDough, prices, hidden: p.hidden });
     onClose();
   };
   return (
@@ -296,6 +296,12 @@ function ProductEditor({ product, onClose }: { product: Product; onClose: () => 
       <div className="field-row admin-layer-row">
         <Field label={t('admin.boxesPerLayer')} hint={t('admin.boxesPerLayerHint')}>
           <input type="text" inputMode="numeric" defaultValue={p.boxesPerLayer ?? ''} placeholder="4" onChange={(e) => setP({ ...p, boxesPerLayer: num(e.target.value) })} />
+        </Field>
+        <Field label={t('admin.gramsPerBread')} hint={t('admin.gramsPerBreadHint')}>
+          <input type="text" inputMode="numeric" defaultValue={p.gramsPerBread ?? ''} placeholder="60" onChange={(e) => setP({ ...p, gramsPerBread: num(e.target.value) })} />
+        </Field>
+        <Field label={t('admin.breadsPerBox')} hint={t('admin.breadsPerBoxHint')}>
+          <input type="text" inputMode="numeric" defaultValue={p.breadsPerBox ?? ''} placeholder="90" onChange={(e) => setP({ ...p, breadsPerBox: num(e.target.value) })} />
         </Field>
         {p.boxesPerPallet ? <PalletBadge boxes={p.boxesPerPallet} perLayer={p.boxesPerLayer} label={t('pallet.label', { boxes: p.boxesPerPallet, layers: palletLayers(p.boxesPerPallet, p.boxesPerLayer).layers })} unit={0.5} /> : null}
       </div>
