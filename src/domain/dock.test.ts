@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deliveries, openLoadingDeviations } from './dock.ts';
+import { deliveredFromChecks, deliveries, loadProgress, openLoadingDeviations, shortLoaded, withCheck } from './dock.ts';
 import { boxCountOptions, lineBoxesPerPallet, palletLayers } from './pallet.ts';
 import type { Deviation, Order, Product } from './types.ts';
 
@@ -56,5 +56,41 @@ describe('the loading dock', () => {
     const handled = dev('bad', { handled: { at: 9 } });
     expect(deliveries([order('bad', '2030-01-07')], [handled], '2030-01-07')[0].state).toBe('toLoad');
     expect(openLoadingDeviations([handled, dev('x')]).map((d) => d.orderId)).toEqual(['x']);
+  });
+});
+
+describe('loading a delivery product by product', () => {
+  const o: Order = {
+    id: 'o',
+    customerId: 'k',
+    day: '2030-01-07',
+    createdAt: 0,
+    lines: [
+      { productId: 'a', pallets: 3, boxes: 0 },
+      { productId: 'b', pallets: 2, boxes: 6, boxesPerPallet: 30 },
+      { productId: 'c', pallets: 1, boxes: 0 },
+      { productId: 'z', pallets: 0, boxes: 0 },
+    ],
+  };
+  const check = (productId: string, state: 'ok' | 'notDelivered' | 'short', pallets = 0, boxes = 0) => ({ productId, state, pallets, boxes, at: 1, workerIds: ['w'] });
+  it('counts the products checked and the problems', () => {
+    let x = { ...o, lineChecks: withCheck(o, check('a', 'ok')) };
+    expect(loadProgress(x)).toMatchObject({ total: 3, checked: 1, done: false });
+    x = { ...x, lineChecks: withCheck(x, check('c', 'notDelivered')) };
+    x = { ...x, lineChecks: withCheck(x, check('b', 'short', 2, 0)) };
+    expect(loadProgress(x).done).toBe(true);
+    expect(loadProgress(x).problems.map((p) => p.productId)).toEqual(['c', 'b']);
+    expect(deliveredFromChecks(x)).toEqual([
+      { productId: 'a', pallets: 3, boxes: 0 },
+      { productId: 'b', pallets: 2, boxes: 0 },
+      { productId: 'c', pallets: 0, boxes: 0 },
+    ]);
+  });
+  it('takes missing boxes off the extra boxes first, then off the pallets', () => {
+    const line = { pallets: 2, boxes: 6, boxesPerPallet: 30 };
+    expect(shortLoaded(line, undefined, 4)).toEqual({ pallets: 2, boxes: 2 });
+    expect(shortLoaded(line, undefined, 10)).toEqual({ pallets: 1, boxes: 26 });
+    expect(shortLoaded({ pallets: 3, boxes: 0 }, { boxesPerPallet: 20 }, 5)).toEqual({ pallets: 2, boxes: 15 });
+    expect(shortLoaded({ pallets: 1, boxes: 0 }, { boxesPerPallet: 20 }, 25)).toEqual({ pallets: 0, boxes: 0 });
   });
 });

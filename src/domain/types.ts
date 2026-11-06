@@ -65,6 +65,8 @@ export interface Session {
   workerIds: string[];
   /** The forklift driver (loading dock only; one at a time). */
   driverId?: string;
+  /** The delivery being loaded now (loading dock only). */
+  loadingOrderId?: string;
   startedAt: number;
   endedAt?: number;
   /** Which device/station it ran on (the name set in Admin). */
@@ -117,6 +119,20 @@ export interface OrderLine {
   boxesPerPallet?: number;
 }
 
+/** A product checked at the loading dock: what was loaded of it, and by whom. */
+export interface LineCheck {
+  productId: string;
+  state: 'ok' | 'notDelivered' | 'short';
+  /** What was loaded (for 'short': the ordered count less what is missing). */
+  pallets: number;
+  boxes: number;
+  /** For 'short': boxes missing. */
+  missingBoxes?: number;
+  note?: string;
+  at: number;
+  workerIds: string[];
+}
+
 /** A customer's order, copied from the paper list, on the day it is to be picked up. */
 export interface Order {
   id: string;
@@ -134,6 +150,8 @@ export interface Order {
   loadedBy?: { workerIds: string[]; driverId?: string };
   /** The quantities the loading dock reported as delivered (when confirmed); accounting bills these. */
   delivered?: { productId: string; pallets: number; boxes: number }[];
+  /** Each product checked at the dock while loading: loaded as ordered, not delivered, or short. */
+  lineChecks?: LineCheck[];
   /** Called off: kept, but counted nowhere. */
   cancelled?: boolean;
   updatedAt?: number;
@@ -179,7 +197,7 @@ export interface Deviation {
   /** The delivery it concerns (loading dock deviations). */
   orderId?: string;
   /** What went wrong at the loading dock. */
-  loadingKind?: 'count' | 'damaged' | 'missing' | 'other';
+  loadingKind?: 'count' | 'damaged' | 'missing' | 'other' | 'notDelivered' | 'boxesMissing';
   /** A manager has seen to it. */
   handled?: { at: number; note?: string };
   /** Who reported it. */

@@ -1787,3 +1787,38 @@ input[type='checkbox'] {
 .acc-lines li strong { align-self: flex-end; }
 .acc-calc { color: var(--muted); }
 .dock-qty-rows li.dock-qty-changed { background: var(--cal-missing); border-radius: 8px; padding-left: 6px; padding-right: 6px; }
+
+/* Lastas just nu: the delivery on its way onto the truck, readable from the forklift. */
+.dock-idle { border: 2px dashed var(--border); }
+.dock-now { border: 3px solid var(--primary); padding: 0; overflow: hidden; }
+.dock-now-band { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: var(--primary); color: #fff; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 8px 16px; font-size: 0.95rem; }
+.dock-now-band span:last-child { text-transform: none; letter-spacing: 0; font-weight: 700; }
+.dock-now-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding: 12px 16px 6px; }
+.dock-now-customer { font-size: 2.3rem; line-height: 1.1; }
+.dock-now-number { font-size: 1.3rem; color: var(--muted); font-weight: 700; }
+.dock-now-total { white-space: nowrap; font-size: 1.4rem; font-weight: 700; }
+.dock-now-total strong { font-size: 3.2rem; line-height: 1; }
+.dock-now-lines { list-style: none; margin: 0; padding: 0 16px; }
+.dock-now-lines li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 8px; margin: 0 -8px; border-top: 1px solid var(--border); border-radius: 10px; }
+.dock-now-lines li.dock-line-ok { background: var(--cal-worked); }
+.dock-now-lines li.dock-line-problem { background: var(--cal-missing); }
+.dock-now-product { display: flex; flex-direction: column; min-width: 0; }
+.dock-now-product strong { font-size: 1.2rem; }
+.dock-now-qty { font-size: 1.5rem; font-weight: 800; }
+.dock-now-problem { font-weight: 700; color: var(--cal-missing-strong); }
+.dock-now-actions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 150px; }
+.dock-line-yes { min-height: 60px; font-size: 1.15rem; background: var(--cal-worked-strong); border-color: var(--cal-worked-strong); color: #fff; }
+.dock-line-no { min-height: 48px; }
+.dock-now-state { font-weight: 800; text-align: center; font-size: 1.1rem; }
+.dock-now-state.ok { color: var(--cal-worked-strong); }
+.dock-now-foot { display: grid; grid-template-columns: 1fr 0.7fr 1.6fr; gap: 10px; padding: 12px 16px 16px; }
+.dock-now-foot .button { min-height: 60px; }
+.dock-finish { font-size: 1.15rem; }
+.dock-now > p { padding: 0 16px; }
+@media (max-width: 560px) {
+  .dock-now-lines li { grid-template-columns: minmax(0, 1fr) auto; }
+  .dock-now-lines li .pallet-badge { display: none; }
+  .dock-now-foot { grid-template-columns: 1fr 1fr; }
+  .dock-now-foot .dock-finish { grid-column: 1 / -1; }
+  .dock-now-customer { font-size: 1.8rem; }
+}

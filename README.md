@@ -99,9 +99,16 @@ to confirm; keep the paper form alongside until they have.
 - **Check in** like the packers: the **loaders** (several at once) and **one forklift driver**.
   Adding or removing someone, or changing the driver, asks "Är du säker?"; the last one checked
   in can't leave (finish the session instead).
-- **Lastad** (with "Är du säker?") marks a delivery loaded with the time, the loaders and the
-  driver, and **the quantities loaded** – the ordered ones unless the dock changes them; accounting
-  bills those. It can be taken back for two minutes. **Avvikelse** (wrong count, damaged, missing,
+- **Lastas just nu**: "Börja lasta" on a delivery brings it to the top in a highlighted card –
+  the customer's name and the pallet total big, and **every product on the order as its own row**
+  (pallets, boxes, the pallet's height). Each product is ticked **✓ Lastad**, or reported
+  **Saknas**: *not delivered* (nothing of it) or *boxes missing* (how many – the app works out
+  what was loaded: missing boxes come off the extra boxes first, then off the pallets). "Ändra"
+  takes a tick back; "Pausa" leaves the delivery half-checked to go on later.
+- **Klar – lastad** opens once every product is checked and, with "Är du säker?" listing any
+  problems, marks the delivery loaded with the time, loaders, driver and **the quantities
+  actually loaded** – what accounting bills. Each problem becomes a deviation shown to the
+  managers. It can be taken back for two minutes. **Avvikelse** (wrong count, damaged, missing,
   other + a note) is saved with the delivery, time and crew and **shown to the managers** in
   Kontor and Produktion until one marks it handled.
 
