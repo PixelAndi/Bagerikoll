@@ -12,6 +12,7 @@ import type { Deviation, Order, Session } from '../domain/types.ts';
 import { Field, Modal, Notice, Page } from './common.tsx';
 import { Stepper } from './OrderEditor.tsx';
 import { PalletBadge } from './PalletIcon.tsx';
+import { QrCode } from './QrCode.tsx';
 
 // Lastkaj, the loading dock (a tablet in kiosk mode): "Lastas just nu" – the delivery being
 // loaded, its customer and pallets big, each product ticked off or reported missing – and below it
@@ -25,6 +26,7 @@ const clock = (at: number) => new Date(at).toLocaleTimeString('sv-SE', { hour: '
 
 export function DockView() {
   const { t, settings } = useApp();
+  const [showQr, setShowQr] = useState(false);
   const session = useLiveQuery(() => (settings.dockSessionId ? db.sessions.get(settings.dockSessionId) : undefined), [settings.dockSessionId]);
   const running = session && !session.endedAt ? session : undefined;
   const today = todayLocal();
@@ -45,6 +47,7 @@ export function DockView() {
 
   return (
     <Page title={t('dock.title')}>
+      {showQr && <CountQr onClose={() => setShowQr(false)} />}
       <div className="pack-layout">
         <div className="pack-main">
           {loading ? (
@@ -63,6 +66,18 @@ export function DockView() {
             ))}
         </div>
         <div className="pack-side">
+          {/* The freezer stock: count it here, or show a QR code to count it on a phone. */}
+          <section className="card dock-stock">
+            <strong>{t('count.stockTitle')}</strong>
+            <span className="dock-count-buttons">
+              <a className="button" href="#/count">
+                📦 {t('count.title')}
+              </a>
+              <button type="button" className="button button-primary" onClick={() => setShowQr(true)}>
+                📱 {t('count.withPhone')}
+              </button>
+            </span>
+          </section>
           {running ? <DockCrew session={running} /> : <StartDock />}
           <section className="card">
             <div className="cal-focus-head">
@@ -574,5 +589,42 @@ function StackBadge({ pallets, per, perLayer }: { pallets: number; per: number; 
       <PalletBadge boxes={per} perLayer={perLayer} stacked={plan.pairs ? 2 : 1} label={label} unit={plan.pairs ? 0.36 : 0.42} />
       {plan.pairs > 0 && <span className="small muted">{t('pallet.short', { boxes: per })}</span>}
     </span>
+  );
+}
+
+/** The link a phone opens to count the freezer: Admin's setting, else this app's own count page. */
+export const countLink = (setting?: string) => setting?.trim() || `${location.origin}${location.pathname}#/count`;
+
+/**
+ * A QR code a phone scans to count the freezer stock on the phone – shown for a set time (Admin;
+ * 30 s unless set) or until closed.
+ */
+function CountQr({ onClose }: { onClose: () => void }) {
+  const { t, settings } = useApp();
+  const seconds = Math.max(5, Math.round(settings.qrSeconds ?? 30));
+  const [left, setLeft] = useState(seconds);
+  useEffect(() => {
+    const timer = setInterval(() => setLeft((s) => s - 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (left <= 0) onClose();
+  }, [left, onClose]);
+  const link = countLink(settings.qrLink);
+  return (
+    <Modal title={t('count.qrTitle')} onClose={onClose}>
+      <div className="qr-box">
+        <QrCode text={link} size={280} title={link} />
+        <p>{t('count.qrHint')}</p>
+        <p className="small muted qr-link">{link}</p>
+        <div className="qr-countdown" style={{ ['--p' as string]: `${(left / seconds) * 100}%` }}>
+          <span>{t('count.qrClosesIn', { s: Math.max(0, left) })}</span>
+        </div>
+        <p className="small muted">{t('count.qrNote')}</p>
+      </div>
+      <button type="button" className="button pack-start" onClick={onClose}>
+        {t('count.qrClose')}
+      </button>
+    </Modal>
   );
 }

@@ -58,7 +58,10 @@ dock reported (`Order.delivered`); each line's calculation shown (`lineCalc`, `e
 accounting sets prices and costs (`ui/PriceEditor.tsx`; `Product.costs`, `lineCost`; Admin no
 longer edits prices); "Veckans vinst" (`profitOf`, `profitBy`) – revenue, cost, gross profit,
 margin per day/customer/product; Excel file with
-formulas (verify changes by recalculating with LibreOffice, `soffice --convert-to csv`). **Lastkaj** (`ui/DockView.tsx`, `domain/dock.ts` + tests): today's deliveries; loaders
+formulas (verify changes by recalculating with LibreOffice, `soffice --convert-to csv`). **Fryslager** (formerly Lastkaj; route `dock`; `ui/DockView.tsx`, `domain/dock.ts` + tests): stock
+counting (`ui/CountView.tsx`, `#/count`, `StockCount.workerIds`) and a QR code for a phone
+(`ui/QrCode.tsx` via `qrcode-generator`; link and seconds in `settings.qrLink/qrSeconds`, Admin);
+today's deliveries; loaders
 (several) and one forklift driver check in (`Session.kind 'dock'`, `driverId`); "Lastas just nu"
 (`Session.loadingOrderId`) checks each product (`Order.lineChecks`: ok / notDelivered / short with
 missing boxes, `shortLoaded`); "Klar" sets `shippedAt` + `loadedBy` + `delivered` (from the checks)

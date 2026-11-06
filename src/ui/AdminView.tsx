@@ -6,7 +6,9 @@ import { hashPin } from '../domain/pin.ts';
 import type { Product } from '../domain/types.ts';
 import { palletLayers } from '../domain/pallet.ts';
 import { Card, Field, Fold, Modal, Notice, Page } from './common.tsx';
+import { countLink } from './DockView.tsx';
 import { PalletBadge } from './PalletIcon.tsx';
+import { QrCode } from './QrCode.tsx';
 
 // Admin (behind the PIN): the managerial controls – names, customers, products and brands (for
 // accounting), this device's
@@ -40,6 +42,7 @@ export function AdminView() {
       <Products />
       <Brands />
       {!settings.locked && <Station />}
+      <CountQrSettings />
       <ChangePin />
     </Page>
   );
@@ -391,6 +394,31 @@ function ChangePin() {
         {t('admin.savePin')}
       </button>
       {done && <p className="ok small">✓ {t('admin.pinSaved')}</p>}
+    </Fold>
+  );
+}
+
+/** The freezer's QR code for counting with a phone: the link it opens and how long it shows. */
+function CountQrSettings() {
+  const { t, settings, save } = useApp();
+  const link = countLink(settings.qrLink);
+  return (
+    <Fold title={t('count.qrSettings')} sub={t('count.qrSettingsSub', { s: settings.qrSeconds ?? 30 })}>
+      <p className="small muted">{t('count.qrSettingsHint')}</p>
+      <Field label={t('count.qrLinkLabel')} hint={t('count.qrLinkHint')}>
+        <input type="url" defaultValue={settings.qrLink ?? ''} placeholder={countLink()} onBlur={(e) => save({ qrLink: e.target.value.trim() || undefined })} />
+      </Field>
+      <Field label={t('count.qrSecondsLabel')}>
+        <input type="number" min={5} max={600} defaultValue={settings.qrSeconds ?? 30} onBlur={(e) => save({ qrSeconds: Math.min(600, Math.max(5, Number(e.target.value) || 30)) })} />
+      </Field>
+      <div className="qr-admin">
+        <QrCode text={link} size={120} title={link} />
+        <span className="small">
+          {t('count.qrNow')}
+          <br />
+          <a href={link}>{link}</a>
+        </span>
+      </div>
     </Fold>
   );
 }

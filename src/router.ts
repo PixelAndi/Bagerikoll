@@ -8,6 +8,7 @@ export type Route =
   | { name: 'stations' }
   | { name: 'pack' }
   | { name: 'dock' }
+  | { name: 'count' }
   | { name: 'accounting' }
   | { name: 'today' }
   | { name: 'production' }
@@ -18,7 +19,7 @@ export type Route =
   | { name: 'more' }
   | { name: 'design' };
 
-const SIMPLE = ['pack', 'dock', 'accounting', 'today', 'production', 'office', 'log', 'admin', 'more', 'design'] as const;
+const SIMPLE = ['pack', 'dock', 'count', 'accounting', 'today', 'production', 'office', 'log', 'admin', 'more', 'design'] as const;
 
 export function parse(hash: string): Route {
   const [name, arg] = hash.replace(/^#\/?/, '').split('/');

@@ -1894,3 +1894,21 @@ input[type='checkbox'] {
 .book-mini-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.82rem; border-top: 1px solid var(--border); padding-top: 3px; }
 .mini-state { font-weight: 700; font-size: 0.78rem; }
 .mini-state.ok { color: var(--cal-worked-strong); }
+
+/* Fryslager: counting the stock, and the QR code for a phone. */
+.dock-count-buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.dock-count-buttons .button { min-height: 48px; }
+.qr-box { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.qr-code { display: block; border-radius: 6px; }
+.qr-link { word-break: break-all; }
+.qr-countdown { position: relative; width: 100%; height: 30px; border-radius: 15px; background: var(--surface-2); overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.qr-countdown::before { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--p); background: var(--primary-soft); transition: width 1s linear; }
+.qr-countdown span { position: relative; }
+.qr-admin { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+.qr-admin a { word-break: break-all; }
+.count-rows li { flex-wrap: wrap; }
+.count-row.count-saved { background: var(--cal-worked); border-radius: 8px; }
+.count-input { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; justify-content: flex-end; }
+.count-input .button-primary { min-height: 48px; }
+.dock-stock { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dock-stock .dock-count-buttons { justify-content: flex-start; }

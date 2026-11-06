@@ -13,6 +13,10 @@ export interface Settings {
   locked: boolean;
   /** What a locked device shows: the packing station (default), the loading dock, or Ekonomi (accounting). */
   lockedTo?: 'pack' | 'dock' | 'accounting';
+  /** The link the freezer's QR code opens on a phone (Inventera); empty = this app's own count page. */
+  qrLink?: string;
+  /** Seconds the QR code stays on screen (default 30). */
+  qrSeconds?: number;
   /** The loading dock session running on this device. */
   dockSessionId?: string;
   /** The admin PIN's hash when it has been changed on this device (see domain/pin.ts). */

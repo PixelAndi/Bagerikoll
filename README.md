@@ -117,7 +117,19 @@ line's amount, Ändra and Flytta.
   and week total as formulas; sheet *Summering* per billing company and customer with SUMIFS on
   the first sheet. Checked by recalculating it in LibreOffice. Also printable.
 
-## Lastkaj (the loading dock)
+## Fryslager (the freezer: loading and stock) – formerly "Lastkaj"
+
+- **Inventera**: count the freezer stock product by product (pallets and boxes), saved with the
+  time and who counted; stock is then counted from it (counted + packed − loaded). Open to
+  everyone, on the freezer's tablet or on a phone.
+- **📱 Inventera med mobilen** shows a QR code (made on the device, nothing sent anywhere) that a
+  phone scans to open the count page; it closes after 30 seconds, or when closed. Admin → "QR-kod
+  för inventering" shows the link and sets it (e.g. a server address later) and how many seconds
+  the code shows.
+- Until there is a shared server, a count made on a phone stays on the phone – read its data file
+  in on the tablet (Mer → Datafil). The page says so.
+
+### Loading
 
 - **Today's deliveries** – the orders picked up today, plus earlier ones from the last week not
   loaded yet – each with its customer, order number, pallets per product and the pallet's height

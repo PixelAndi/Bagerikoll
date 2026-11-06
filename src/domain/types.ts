@@ -220,6 +220,8 @@ export interface StockCount {
   productId: string;
   pallets: number;
   boxes: number;
+  /** Who counted (Inventera in Fryslager). */
+  workerIds?: string[];
   updatedAt?: number;
 }
 

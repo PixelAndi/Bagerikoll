@@ -8,6 +8,7 @@ import { AdminView } from './ui/AdminView.tsx';
 import { Icon } from './ui/common.tsx';
 import { DesignView } from './ui/DesignView.tsx';
 import { AccountingView } from './ui/AccountingView.tsx';
+import { CountView } from './ui/CountView.tsx';
 import { DockView } from './ui/DockView.tsx';
 import { StationsView } from './ui/StationsView.tsx';
 import { MoreView } from './ui/MoreView.tsx';
@@ -39,7 +40,7 @@ const TABS: Tab[] = [
 /** The view a locked device shows, and the tab it keeps. */
 const KIOSK = {
   pack: { route: { name: 'pack' } as Route, icon: 'pack' as TabIcon, label: 'pack.title' as TextKey, routes: ['pack', 'protocol'] as Route['name'][] },
-  dock: { route: { name: 'dock' } as Route, icon: 'truck' as TabIcon, label: 'nav.dock' as TextKey, routes: ['dock'] as Route['name'][] },
+  dock: { route: { name: 'dock' } as Route, icon: 'truck' as TabIcon, label: 'nav.dock' as TextKey, routes: ['dock', 'count'] as Route['name'][] },
   accounting: { route: { name: 'accounting' } as Route, icon: 'coin' as TabIcon, label: 'nav.accounting' as TextKey, routes: ['accounting'] as Route['name'][] },
 };
 
@@ -112,6 +113,8 @@ function Screen({ route }: { route: Route }) {
       return <DockView />;
     case 'accounting':
       return <AccountingView />;
+    case 'count':
+      return <CountView />;
     case 'production':
       return <ProductionView />;
     case 'office':
