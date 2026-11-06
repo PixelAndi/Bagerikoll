@@ -43,16 +43,25 @@ export function OrderBook(props: OrderBookProps) {
   const days = all.filter((d, i) => i < 5 || orders.some((o) => o.day === d && !o.cancelled));
   const dayName = (d: LocalDate) => new Intl.DateTimeFormat(lang, { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`));
   const byDay = (d: LocalDate) => orders.filter((o) => o.day === d).sort((a, b) => (a.orderNumber ?? '').localeCompare(b.orderNumber ?? '', 'sv', { numeric: true }) || a.createdAt - b.createdAt);
+  const { t } = useApp();
+  const [allOpen, setAllOpen] = useState(false);
   return (
-    <div className="office-week order-book" style={{ ['--days' as string]: days.length }}>
-      {days.map((d) => (
-        <DayColumn key={d} {...props} day={d} label={dayName(d)} orders={byDay(d)} />
-      ))}
-    </div>
+    <>
+      <div className="book-toolbar">
+        <button type="button" className="button button-small" aria-pressed={allOpen} onClick={() => setAllOpen(!allOpen)}>
+          {allOpen ? `▴ ${t('book.lessDetails')}` : `▾ ${t('book.allDetails')}`}
+        </button>
+      </div>
+      <div className={`office-week order-book ${props.mode}`} style={{ ['--days' as string]: days.length }}>
+        {days.map((d) => (
+          <DayColumn key={d} {...props} day={d} label={dayName(d)} orders={byDay(d)} allOpen={allOpen} />
+        ))}
+      </div>
+    </>
   );
 }
 
-function DayColumn({ day, label, orders, mode, today, dupes, onNew, onEdit, onMove, onPrintDay }: OrderBookProps & { day: LocalDate; label: string }) {
+function DayColumn({ day, label, orders, mode, today, dupes, onNew, onEdit, onMove, onPrintDay, allOpen }: OrderBookProps & { day: LocalDate; label: string; allOpen: boolean }) {
   const { t } = useApp();
   const { products } = useCatalog();
   const [over, setOver] = useState(false);
@@ -94,7 +103,7 @@ function DayColumn({ day, label, orders, mode, today, dupes, onNew, onEdit, onMo
         {!office && live.length > 0 && <span className="small book-day-amount">{money(dayAmount)}</span>}
       </header>
       {orders.map((o) => (
-        <OrderCard key={o.id} order={o} mode={mode} duplicate={!!o.orderNumber && !!dupes?.has(o.orderNumber)} onEdit={onEdit} onMove={onMove} />
+        <OrderCard key={o.id} order={o} mode={mode} duplicate={!!o.orderNumber && !!dupes?.has(o.orderNumber)} onEdit={onEdit} onMove={onMove} allOpen={allOpen} />
       ))}
       {office && (
         <div className="office-day-buttons">
@@ -126,7 +135,9 @@ function orderAmount(order: Order, products: Product[], mode: 'office' | 'accoun
 }
 
 /** One order as the book writes it: customer, billing marking, order number – then its products. */
-function OrderCard({ order, mode, duplicate, onEdit, onMove }: { order: Order; mode: 'office' | 'accounting'; duplicate: boolean; onEdit?: (o: Order) => void; onMove?: (o: Order) => void }) {
+function OrderCard({ order, mode, duplicate, onEdit, onMove, allOpen }: { order: Order; mode: 'office' | 'accounting'; duplicate: boolean; onEdit?: (o: Order) => void; onMove?: (o: Order) => void; allOpen: boolean }) {
+  const [open, setOpen] = useState(false);
+  const expanded = open || allOpen;
   const { t } = useApp();
   const { customers, products, brands } = useCatalog();
   const office = mode === 'office';
@@ -153,17 +164,74 @@ function OrderCard({ order, mode, duplicate, onEdit, onMove }: { order: Order; m
       : loaded
         ? 'office-full'
         : 'office-partly';
+  const head = (
+    <div className="book-order-head">
+      <strong className="book-customer">{customer?.name ?? '?'}</strong>
+      {biller && (
+        <span className="biller-badge" style={{ ['--brand' as string]: biller.color }} title={biller.name}>
+          {billerCode(biller)}
+        </span>
+      )}
+      {order.orderNumber && <strong className={`book-number ${duplicate ? 'warn-text' : ''}`}>{order.orderNumber}</strong>}
+      <button type="button" className="book-toggle" aria-expanded={expanded} aria-label={t(expanded ? 'book.lessDetails' : 'book.details')} onClick={() => setOpen(!open)} disabled={allOpen}>
+        {expanded ? '▴' : '▾'}
+      </button>
+    </div>
+  );
+  // At a glance: one short line per product – the tick (Kontor), name, article number and pallets –
+  // a ✎ or 🚚 where something changed; the rest opens with ▾.
+  if (!expanded) {
+    const shownTotal = orderTotals([!office && loaded ? { ...order, lines: deliveredLines(order) } : order]);
+    return (
+      <article className={`office-order book-order book-compact ${status}`} draggable={office && !order.cancelled} onDragStart={office ? (e) => e.dataTransfer.setData('text/plain', order.id) : undefined}>
+        {head}
+        <ul className="book-mini">
+          {order.lines
+            .filter((l) => l.pallets || l.boxes)
+            .map((l) => {
+              const p = products.find((x) => x.id === l.productId);
+              const ch = lineChange(order, l.productId);
+              const shown = !office && loaded && ch.delivered ? ch.delivered : l;
+              return (
+                <li key={l.productId} className={ch.was || ch.added || ch.delivered ? 'book-changed' : ''} title={[ch.was ? t('book.was', { what: qty(t, ch.was) }) : '', ch.added ? t('book.added') : '', ch.delivered ? t('book.delivered', { what: qty(t, ch.delivered) }) : ''].filter(Boolean).join(' · ') || undefined}>
+                  {office && <input type="checkbox" checked={!!l.plannedAt} disabled={order.cancelled} onChange={() => void toggle(l.productId)} aria-label={`${p?.name ?? ''} ${t('office.plannedCol')}`} />}
+                  <span className="mini-name">{p?.name ?? '?'}</span>
+                  <span className="mini-code">{p?.code}</span>
+                  <strong className="mini-qty">
+                    {shown.pallets ? `${shown.pallets} p` : ''}
+                    {shown.boxes ? `${shown.pallets ? '+' : ''}${shown.boxes} k` : ''}
+                    {!shown.pallets && !shown.boxes ? '0' : ''}
+                  </strong>
+                  <span className="mini-mark">{ch.delivered ? '🚚' : ch.was || ch.added ? '✎' : ''}</span>
+                </li>
+              );
+            })}
+          {removed.length > 0 && <li className="book-changed mini-removed">✎ {t('book.removedN', { n: removed.length })}</li>}
+        </ul>
+        <div className="book-mini-foot">
+          <span>
+            <strong>{shownTotal.pallets} p</strong>
+            {shownTotal.boxes > 0 && ` + ${shownTotal.boxes} k`}
+            {!office && <span> · {total.missing ? t('office.noPriceShort') : money(total.amount)}</span>}
+          </span>
+          {office ? (
+            order.cancelled ? (
+              <span className="cal-chip">{t('prod.cancelled')}</span>
+            ) : (
+              <span className={`mini-state ${state.full ? 'ok' : 'warn-text'}`}>{state.full ? `✓ ${t('book.planned')}` : `${state.planned}/${state.total} ${t('book.plannedShort')}`}</span>
+            )
+          ) : order.cancelled ? (
+            <span className="cal-chip">{t('prod.cancelled')}</span>
+          ) : (
+            <span className={`mini-state ${loaded ? 'ok' : 'warn-text'}`}>{loaded ? `✓ ${t('accounting.delivered')}` : t('accounting.notYet')}</span>
+          )}
+        </div>
+      </article>
+    );
+  }
   return (
     <article className={`office-order book-order ${status}`} draggable={office && !order.cancelled} onDragStart={office ? (e) => e.dataTransfer.setData('text/plain', order.id) : undefined}>
-      <div className="book-order-head">
-        <strong className="book-customer">{customer?.name ?? '?'}</strong>
-        {biller && (
-          <span className="biller-badge" style={{ ['--brand' as string]: biller.color }} title={biller.name}>
-            {billerCode(biller)}
-          </span>
-        )}
-        {order.orderNumber && <strong className={`book-number ${duplicate ? 'warn-text' : ''}`}>{order.orderNumber}</strong>}
-      </div>
+      {head}
       <div className="book-status">
         {order.cancelled ? (
           <span className="cal-chip">{t('prod.cancelled')}</span>

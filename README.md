@@ -85,6 +85,12 @@ number**; under it each product with **name, article number and amount**, marked
 the first version is kept on the first edit), 🚚 loaded another count at the dock. No mark = as
 ordered.
 
+At a glance each order is compact – one short line per product (Kontor: the tick, name, article
+number and pallets; Ekonomi: name, article number and what was delivered, with only the order's
+total in kronor), a ✎ or 🚚 at the end of a changed line, and the order's state at the foot. ▾ on
+an order, or "Visa detaljer för alla", opens the full view: what changed, boxes per pallet, each
+line's amount, Ändra and Flytta.
+
 - **Kontor (managers)**: the same book plus the planned-for-production ticks, boxes per pallet,
   Ändra, Flytta and dragging to another day.
 - **Ekonomi (accounting)**: read only – delivered or not, each line's amount (of what was
