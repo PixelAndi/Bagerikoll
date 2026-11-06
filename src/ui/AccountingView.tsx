@@ -40,7 +40,7 @@ function Accounting() {
   const { t, settings } = useApp();
   const today = todayLocal();
   const [monday, setMonday] = useState(mondayOf(addDays(today, -1)));
-  const [print, setPrint] = useState(false);
+  const [print, setPrint] = useState<null | 'full' | 'book'>(null);
   const [pricing, setPricing] = useState<Product | null>(null);
   const { customers, products, brands } = useCatalog();
   const sunday = addDays(monday, 6);
@@ -69,19 +69,23 @@ function Accounting() {
 
   if (print)
     return (
-      <PrintSheet onBack={() => setPrint(false)}>
-        <h1 className="print-title">Ekonomi – {weekLabel}</h1>
-        <p className="print-status">{status.complete ? t('accounting.complete') : t('accounting.incomplete', { delivered: status.delivered.length, total: status.orders.length })}</p>
-        <WeekSheet monday={monday} orders={orders} products={products} customers={customers} brands={brands} dayName={dayName} />
-        <h2 className="print-sub-title">{t('accounting.invoiceBasis')}</h2>
-        {summary.map((b) => (
-          <section key={b.brand?.id ?? 'none'} className="print-day">
-            <h2>
-              {b.brand?.name ?? t('office.noBillerName')} – {money(b.amount)}
-            </h2>
-            <SummaryTable biller={b} />
-          </section>
-        ))}
+      <PrintSheet onBack={() => setPrint(null)}>
+        <h1 className="print-title">{print === 'book' ? `${t('accounting.orderBookTitle')} – ${weekLabel}` : `Ekonomi – ${weekLabel}`}</h1>
+        {print === 'full' && <p className="print-status">{status.complete ? t('accounting.complete') : t('accounting.incomplete', { delivered: status.delivered.length, total: status.orders.length })}</p>}
+        <WeekSheet monday={monday} orders={orders} products={products} customers={customers} brands={brands} dayName={dayName} amounts={print === 'full'} />
+        {print === 'full' && (
+          <>
+            <h2 className="print-sub-title">{t('accounting.invoiceBasis')}</h2>
+            {summary.map((b) => (
+              <section key={b.brand?.id ?? 'none'} className="print-day">
+                <h2>
+                  {b.brand?.name ?? t('office.noBillerName')} – {money(b.amount)}
+                </h2>
+                <SummaryTable biller={b} />
+              </section>
+            ))}
+          </>
+        )}
       </PrintSheet>
     );
 
@@ -146,8 +150,11 @@ function Accounting() {
           <button type="button" className="button button-primary" disabled={!rows.length} onClick={download}>
             ⬇ {t('accounting.excel')}
           </button>
-          <button type="button" className="button" disabled={!rows.length} onClick={() => setPrint(true)}>
-            🖨 {t('protocol.print')}
+          <button type="button" className="button" disabled={!rows.length} onClick={() => setPrint('full')}>
+            🖨 {t('office.printWeek')}
+          </button>
+          <button type="button" className="button" disabled={!status.orders.length} onClick={() => setPrint('book')}>
+            🖨 {t('accounting.orderBookTitle')}
           </button>
         </div>
         {status.complete || !status.orders.length ? null : <p className="small muted">{t('accounting.excelEarly')}</p>}
@@ -225,7 +232,7 @@ function Accounting() {
  * the order's amount – with day and week totals. Black on white, thin rules, no fills, for A4
  * landscape with little ink.
  */
-function WeekSheet({ monday, orders, products, customers, brands, dayName }: { monday: LocalDate; orders: Order[]; products: Product[]; customers: Customer[]; brands: Brand[]; dayName: (d: LocalDate) => string }) {
+function WeekSheet({ monday, orders, products, customers, brands, dayName, amounts = true }: { monday: LocalDate; orders: Order[]; products: Product[]; customers: Customer[]; brands: Brand[]; dayName: (d: LocalDate) => string; amounts?: boolean }) {
   const { t } = useApp();
   const live = orders.filter((o) => !o.cancelled);
   const base = Array.from({ length: 5 }, (_, i) => addDays(monday, i));
@@ -234,7 +241,7 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName }: { m
   const byDay = (d: LocalDate) => live.filter((o) => o.day === d).sort((a, b) => (a.orderNumber ?? '').localeCompare(b.orderNumber ?? '', 'sv', { numeric: true }) || a.createdAt - b.createdAt);
   const product = (id: string) => products.find((p) => p.id === id);
   const loaded = (o: Order) => o.shippedAt !== undefined;
-  const linesOf = (o: Order) => (loaded(o) ? deliveredLines(o) : o.lines).filter((l) => l.pallets || l.boxes);
+  const linesOf = (o: Order) => (amounts && loaded(o) ? deliveredLines(o) : o.lines).filter((l) => l.pallets || l.boxes);
   const orderAmount = (o: Order) => {
     let amount = 0;
     let missing = false;
@@ -261,7 +268,12 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName }: { m
     cur.amount += orderAmount(o).amount;
     billerMap.set(key, cur);
   }
-  const billerTotals = [...billerMap.values()].sort((a, b) => (a.brand?.name ?? 'ÿ').localeCompare(b.brand?.name ?? 'ÿ', 'sv'));
+  const billerPallets = new Map<string, number>();
+  for (const o of live) {
+    const brand = brands.find((x) => x.id === customers.find((c) => c.id === o.customerId)?.billedBy);
+    billerPallets.set(brand?.id ?? 'none', (billerPallets.get(brand?.id ?? 'none') ?? 0) + orderPallets(o));
+  }
+  const billerTotals = [...billerMap.values()].map((b) => ({ ...b, pallets: billerPallets.get(b.brand?.id ?? 'none') ?? 0 })).sort((a, b) => (a.brand?.name ?? 'ÿ').localeCompare(b.brand?.name ?? 'ÿ', 'sv'));
 
   return (
     <section className="week-sheet">
@@ -274,9 +286,7 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName }: { m
             <div key={d} className="week-day">
               <div className="week-day-head">
                 <span className="week-day-name">{dayName(d)}</span>
-                <span className="week-day-tot">
-                  {t('office.orderPallets', { pallets })} · {money(amount)}
-                </span>
+                <span className="week-day-tot">{amounts ? `${t('office.orderPallets', { pallets })} · ${money(amount)}` : t('office.orderPallets', { pallets })}</span>
               </div>
               {!list.length ? (
                 <p className="week-empty">{t('office.noOrdersDay')}</p>
@@ -291,7 +301,7 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName }: { m
                           {mark(o) && <span className="week-mark">{mark(o)}</span>}
                           {o.orderNumber && <span className="week-ono">#{o.orderNumber}</span>}
                         </span>
-                        <span className={`week-state ${loaded(o) ? '' : 'week-open'}`}>{loaded(o) ? '✓' : t('accounting.notYet')}</span>
+                        {amounts && <span className={`week-state ${loaded(o) ? '' : 'week-open'}`}>{loaded(o) ? '✓' : t('accounting.notYet')}</span>}
                       </div>
                       {linesOf(o).map((l) => {
                         const p = product(l.productId);
@@ -304,7 +314,7 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName }: { m
                       })}
                       <div className="week-order-foot">
                         <span>{t('office.orderPallets', { pallets: orderPallets(o) })}</span>
-                        <span>{a.missing ? t('office.noPriceShort') : money(a.amount)}</span>
+                        {amounts && <span>{a.missing ? t('office.noPriceShort') : money(a.amount)}</span>}
                       </div>
                     </div>
                   );
@@ -321,10 +331,10 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName }: { m
         <span className="week-total-billers">
           {billerTotals.map((b) => (
             <span key={b.brand?.id ?? 'none'}>
-              {b.brand ? billerCode(b.brand) : t('office.noBillerName')} {money(b.amount)}
+              {b.brand ? billerCode(b.brand) : t('office.noBillerName')} {amounts ? money(b.amount) : t('office.orderPallets', { pallets: b.pallets })}
             </span>
           ))}
-          <strong>{money(weekAmount)}</strong>
+          {amounts && <strong>{money(weekAmount)}</strong>}
         </span>
       </div>
     </section>
