@@ -1,0 +1,24 @@
+# TrueNAS SCALE → Apps → Discover Apps → ⋮ → Install via YAML. Name: bagerikoll
+# Change two things: the dataset path (POOL) and the tunnel token (from Cloudflare →
+# Zero Trust → Networks → Tunnels → your tunnel → the token after "--token").
+# No ports are opened on the server: the app is reached only through the Cloudflare tunnel,
+# whose public hostname points at http://bagerikoll:8080.
+services:
+  bagerikoll:
+    image: ghcr.io/pixelandi/bagerikoll-server:latest
+    pull_policy: always
+    user: "568:568"
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Stockholm
+    volumes:
+      - /mnt/POOL/apps/bagerikoll:/data
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: "PASTE-YOUR-TUNNEL-TOKEN-HERE"
+    depends_on:
+      - bagerikoll

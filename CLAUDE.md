@@ -34,8 +34,15 @@ yield, rounded up, with the chance it's enough. Deviation days are kept out of t
 Behind the PIN, or open on a phone marked as a manager's phone in Admin. Out of scope until
 the owner says: raw materials, ingredients, automatic order import. **QR scanning at the dock is
 dropped** (owner's decision) – the dock relies on per-product verification. **Decided, not built:**
-an Android app for the tablets (Capacitor, same code, self-updating web code) and a Raspberry Pi
-sync server – see HANDOVER.md items 1 and 9.
+an Android app for the tablets (Capacitor, same code, self-updating web code) – HANDOVER.md item 9.
+**Sync server (built, on test):** `server/` (Node 22, `node:sqlite`, no dependencies: `store.mjs`
+merge/pull by seq/backup + tests, `server.mjs` serves the built app + `/api/health`, `/api/sync`,
+`/api/export`, a daily JSON backup in DATA_DIR/backups). Image `ghcr.io/pixelandi/bagerikoll-server`
+built by `.github/workflows/server.yml`; testing on the owner's TrueNAS behind a Cloudflare tunnel
++ Access on the owner's own domain (`deploy/truenas-compose.yaml`, `deploy/TRUENAS.md`; the tunnel
+token never goes in the repo or chat). The app syncs only when opened from the server
+(`src/sync.ts`: health check, push changed since last push, pull since seq, `mergeRecords`;
+header `SyncBadge`); on GitHub Pages it stays device-only. Later: the company's Raspberry Pi.
 
 **Kontor (built): the office** (`ui/OfficeView.tsx`, `ui/OrderEditor.tsx` shared with Produktion,
 `domain/office.ts` + tests), managers only (same gate as Produktion), for computer, tablet and
@@ -94,8 +101,8 @@ hash in `domain/pin.ts`, changeable per device; HANDOVER.md has the full brief.
   repo) – they are data entered in Admin. Tests use made-up names.
 - Data lives per device (Dexie, `src/db.ts`). Devices exchange data by file (Mer → Datafil,
   `src/datafile.ts`, merge in `domain/datafile.ts`: by id, newer `updatedAt` wins, nothing
-  deleted). The owner's goal is a local server – to be discussed with the boss first; don't
-  build sync before that. Never commit a data file (people's names).
+  deleted); the same merge is used by the server sync (`src/sync.ts`). Never commit a data file
+  or a server database/backup (people's names).
 - Map: `src/domain/` (types, production totals/CSV, plan, data file merge, PIN; tests),
   `src/ui/PackView.tsx` (station), `ProductionView.tsx` (Produktion), `TodayView.tsx` (Idag), `ProductionLog.tsx` (Logg + per packer),
   `AdminView.tsx`, `PinPad.tsx`, `App.tsx`

@@ -4,6 +4,8 @@ import { ADMIN_IDLE_MS } from './domain/pin.ts';
 import { translator, type TextKey } from './i18n.ts';
 import { href, useRoute, type Route } from './router.ts';
 import { useSettings } from './settings.ts';
+import { startSync } from './sync.ts';
+import { SyncBadge } from './ui/SyncBadge.tsx';
 import { AdminView } from './ui/AdminView.tsx';
 import { Icon } from './ui/common.tsx';
 import { DesignView } from './ui/DesignView.tsx';
@@ -72,6 +74,12 @@ export function App() {
     closeAdmin: () => setAdmin(false),
   };
   const kiosk = settings.locked ? KIOSK[settings.lockedTo ?? 'pack'] : undefined;
+  // Sync with the server when the app is opened from it (src/sync.ts).
+  const station = useRef(settings.station);
+  station.current = settings.station;
+  useEffect(() => {
+    void startSync(() => station.current);
+  }, []);
 
   return (
     <AppContext.Provider value={value}>
@@ -82,6 +90,7 @@ export function App() {
             {BETA && <span className="beta-badge">{t('beta.badge')}</span>}
           </span>
           <span className="app-tagline">{settings.station}</span>
+          <SyncBadge />
           {admin && <span className="admin-badge">{t('admin.badge')}</span>}
         </header>
         {/* Kiosk mode: only the workstation's own pages and Admin. */}

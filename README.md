@@ -228,7 +228,9 @@ station). The production day is the packing day.
 
 ## Data between devices
 
-Each device keeps its own data (no server yet; a local server is the plan). Mer → **Datafil**
+Opened from Bagerikoll's server (`server/`, see `deploy/TRUENAS.md`), every device keeps a full
+copy and syncs with the server (the header shows **Synkad HH:MM**; offline work syncs later).
+Opened from anywhere else, each device keeps its own data. Mer → **Datafil**
 saves everything as a JSON file (the share sheet on a phone/tablet) and reads one in: records
 are joined by id and the newer copy wins (`updatedAt`, stamped on every write in `db.ts`);
 nothing is deleted. Never put a data file in this repository – it holds people's names.

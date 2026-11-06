@@ -103,8 +103,9 @@ to the time and the product being packed.
 
 ## Known limits and open decisions (raise these with the owner)
 
-1. **Each device keeps its own data.** For now devices swap a data file (Mer → Datafil).
-   Server plan discussed with the owner (not built; waiting for the boss): a **Raspberry Pi**
+1. **Sync server: built and on test** on the owner's home server (TrueNAS, approved by the
+   boss) – `server/`, `deploy/TRUENAS.md`. Opened from GitHub Pages the app stays device-only
+   (data file). The original plan, for the company's own machine later: a **Raspberry Pi**
    (Pi 4/5 booting from an SSD, not an SD card) running a small sync server (SQLite); outside
    devices reach it through **Cloudflare Tunnel + Access** (no open ports, one https address,
    per-person logins; needs a domain); every device keeps a full copy with persistent storage

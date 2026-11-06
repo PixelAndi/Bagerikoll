@@ -49,5 +49,5 @@ export default defineConfig({
   plugins: [react(), serviceWorker(), contentSecurityPolicy()],
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   build: { target: 'es2022' },
-  test: { include: ['src/**/*.test.ts'] },
+  test: { include: ['src/**/*.test.ts', 'server/**/*.test.mjs'] },
 });

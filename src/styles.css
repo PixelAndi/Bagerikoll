@@ -1927,3 +1927,9 @@ input[type='checkbox'] {
 .obs-list li:first-child { border-top: 0; }
 .obs-buttons { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .obs-allow { margin: 0; }
+
+/* Sync with the server: a small badge in the header. */
+.sync-badge { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 12px; font: inherit; font-size: 0.75rem; font-weight: 700; padding: 3px 9px; min-height: 30px; cursor: pointer; white-space: nowrap; }
+.sync-ok { border-color: var(--cal-worked-strong); color: var(--cal-worked-strong); }
+.sync-offline, .sync-error { border-color: var(--cal-missing-strong); background: var(--cal-missing); }
+.sync-login { border-color: var(--error); background: var(--error-soft); }

@@ -68,12 +68,22 @@ export async function whileReading<T>(work: () => Promise<T>): Promise<T> {
     reading = false;
   }
 }
+/** Called after a change made on this device (not one read in) – sync sends it soon after. */
+export const localWrites = new Set<() => void>();
+const wrote = () => setTimeout(() => localWrites.forEach((f) => f()), 0);
 for (const name of DATA_TABLES) {
   const table = db.table(name);
   table.hook('creating', (_key, obj: { updatedAt?: number }) => {
-    if (!reading) obj.updatedAt = Date.now();
+    if (!reading) {
+      obj.updatedAt = Date.now();
+      wrote();
+    }
   });
-  table.hook('updating', () => (reading ? undefined : { updatedAt: Date.now() }));
+  table.hook('updating', () => {
+    if (reading) return undefined;
+    wrote();
+    return { updatedAt: Date.now() };
+  });
 }
 
 export const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
