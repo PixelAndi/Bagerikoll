@@ -49,6 +49,8 @@ export interface Product {
   boxesPerPallet?: number;
   /** Boxes in one layer on the pallet (for the pallet picture; default 4). */
   boxesPerLayer?: number;
+  /** A manager has blocked urgent production (OBS) of this product (it needs more people than an early shift has). */
+  obsBlocked?: boolean;
   /** Pallets one dough usually gives, until there is enough history to go by (default 1). */
   palletsPerDough?: number;
   /** Prices for accounting, each from a day on (the one in force on an order's day is used). */
@@ -158,6 +160,8 @@ export interface Order {
   delivered?: { productId: string; pallets: number; boxes: number }[];
   /** Each product checked at the dock while loading: loaded as ordered, not delivered, or short. */
   lineChecks?: LineCheck[];
+  /** Prepared in the freezer after production: each product in place, or what is missing. */
+  prepared?: { at: number; workerIds: string[]; missing: { productId: string; pallets: number; boxes: number }[] };
   /** Called off: kept, but counted nowhere. */
   cancelled?: boolean;
   updatedAt?: number;
@@ -270,5 +274,27 @@ export interface Run {
   cleaned?: Tick;
   /** Started by mistake (nothing packed): kept, shown as such. */
   cancelled?: boolean;
+  updatedAt?: number;
+}
+
+/**
+ * OBS: a request for urgent production first thing on the next working day, made in the freezer
+ * when a delivery is short after production. Managers plan it, mark it done, or refuse it; a
+ * product they have blocked from OBS is saved as 'notAllowed' (the shortage still reaches them).
+ */
+export interface ObsRequest {
+  id: string;
+  productId: string;
+  orderId?: string;
+  customerId?: string;
+  pallets: number;
+  boxes: number;
+  /** The production day asked for (the next working day). */
+  day: LocalDate;
+  requestedAt: number;
+  workerIds: string[];
+  status: 'requested' | 'planned' | 'done' | 'refused' | 'notAllowed';
+  decidedAt?: number;
+  note?: string;
   updatedAt?: number;
 }

@@ -8,6 +8,7 @@ import { accountingSummary, billerCode, duplicateNumbers, orderTotals, planState
 import type { Order } from '../domain/types.ts';
 import { Card, Modal, Notice, Page } from './common.tsx';
 import { LoadingDeviations } from './LoadingDeviations.tsx';
+import { ObsRequests } from './ObsRequests.tsx';
 import { OrderBook } from './OrderBook.tsx';
 import { OrderEditor } from './OrderEditor.tsx';
 
@@ -146,6 +147,7 @@ function Office() {
       </section>
 
       <LoadingDeviations />
+      <ObsRequests />
 
       {(soon.length > 0 || noBiller.length > 0 || noPrice.length > 0 || weekDupes.length > 0) && (
         <Card title={t('prod.toCheck')} className="cal-check">

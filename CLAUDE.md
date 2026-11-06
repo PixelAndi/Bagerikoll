@@ -61,7 +61,11 @@ margin per day/customer/product; Excel file with
 formulas (verify changes by recalculating with LibreOffice, `soffice --convert-to csv`). **Fryslager** (formerly Lastkaj; route `dock`; `ui/DockView.tsx`, `domain/dock.ts` + tests): stock
 counting (`ui/CountView.tsx`, `#/count`, `StockCount.workerIds`) and a QR code for a phone
 (`ui/QrCode.tsx` via `qrcode-generator`; link and seconds in `settings.qrLink/qrSeconds`, Admin);
-today's deliveries; loaders
+**Förbered + OBS** (`Order.prepared`, `ObsRequest` in table `obs`, `domain/obs.ts`,
+`ui/ObsRequests.tsx`): a delivery prepared in the freezer after production, each product in place
+or missing; a missing product asks for OBS (urgent production on `nextWorkday`) unless the
+product is `obsBlocked` (managers set it in Produktion) → status 'notAllowed'; the managers
+plan / refuse / mark done. Today's deliveries; loaders
 (several) and one forklift driver check in (`Session.kind 'dock'`, `driverId`); "Lastas just nu"
 (`Session.loadingOrderId`) checks each product (`Order.lineChecks`: ok / notDelivered / short with
 missing boxes, `shortLoaded`); "Klar" sets `shippedAt` + `loadedBy` + `delivered` (from the checks)

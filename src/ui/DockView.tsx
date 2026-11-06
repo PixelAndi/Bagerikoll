@@ -5,6 +5,7 @@ import { useCatalog } from '../data.ts';
 import { todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
 import { deliveredDiffers, deliveredLines } from '../domain/accounting.ts';
+import { nextWorkday } from '../domain/obs.ts';
 import { checkOf, deliveredFromChecks, deliveries, loadLines, loadProgress, shortLoaded, withCheck, type Delivery } from '../domain/dock.ts';
 import { orderTotals } from '../domain/office.ts';
 import { lineBoxesPerPallet, stackPlan } from '../domain/pallet.ts';
@@ -261,6 +262,7 @@ function DeliveryCard({ delivery, session, now }: { delivery: Delivery; session?
   const { customers, products, workers } = useCatalog();
   const { order, state, late, deviations } = delivery;
   const [reporting, setReporting] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const customer = customers.find((c) => c.id === order.customerId);
   const total = orderTotals([order]);
   const crew = session ? [...session.workerIds, ...(session.driverId ? [session.driverId] : [])] : [];
@@ -295,6 +297,13 @@ function DeliveryCard({ delivery, session, now }: { delivery: Delivery; session?
         })}
       </ul>
       {order.note && <p className="small muted">{order.note}</p>}
+      {order.prepared && state !== 'loaded' && (
+        <p className={`dock-prepared ${order.prepared.missing.length ? 'warn-text' : 'ok'}`}>
+          {order.prepared.missing.length
+            ? `⚠ ${t('prep.missingLine', { what: order.prepared.missing.map((m) => `${products.find((p) => p.id === m.productId)?.name ?? '?'} ${qtyText(t, m.pallets, m.boxes)}`).join(', ') })}`
+            : `🧊 ${t('prep.ready', { time: clock(order.prepared.at) })}`}
+        </p>
+      )}
       {deviations.map((x) => (
         <p key={x.id} className={`small ${x.handled ? 'muted' : 'warn-text'}`}>
           ⚠ {clock(x.at)} {t(`dock.kind.${x.loadingKind ?? 'other'}`)}: {x.note} – {names(x.workerIds ?? [])}
@@ -326,10 +335,15 @@ function DeliveryCard({ delivery, session, now }: { delivery: Delivery; session?
           )}
         </div>
       ) : (
-        <div className="dock-buttons">
+        <div className="dock-buttons dock-buttons-3">
           <button type="button" className="button" disabled={!session} onClick={() => setReporting(true)}>
             ⚠ {t('run.deviation')}
           </button>
+          {!order.prepared && (
+            <button type="button" className="button dock-prepare" disabled={!session} onClick={() => setPreparing(true)}>
+              🧊 {t('prep.button')}
+            </button>
+          )}
           <button type="button" className="button button-primary" disabled={!session} onClick={() => session && void db.sessions.update(session.id, { loadingOrderId: order.id })}>
             ▶ {progress.checked ? t('dock.continueLoading', { checked: progress.checked, total: progress.total }) : t('dock.startLoading')}
           </button>
@@ -337,7 +351,95 @@ function DeliveryCard({ delivery, session, now }: { delivery: Delivery; session?
       )}
       {!session && state !== 'loaded' && <p className="small muted">{t('dock.checkInFirst')}</p>}
       {reporting && session && <LoadingDeviation order={order} crew={crew} onClose={() => setReporting(false)} />}
+      {preparing && session && <PrepareOrder order={order} crew={crew} onClose={() => setPreparing(false)} />}
     </article>
+  );
+}
+
+/**
+ * Förbered: right after production, the pallets go into the freezer – each product is marked in
+ * place, or missing (how many pallets and boxes). For a missing product an OBS (urgent production
+ * first thing on the next working day) is asked for, unless a manager has blocked OBS for it; either
+ * way the managers see the shortage. With nothing missing the delivery waits in the freezer.
+ */
+function PrepareOrder({ order, crew, onClose }: { order: Order; crew: string[]; onClose: () => void }) {
+  const { t } = useApp();
+  const { products } = useCatalog();
+  const lines = loadLines(order);
+  const [marks, setMarks] = useState<Record<string, { state: 'ok' | 'missing'; pallets: number; boxes: number; obs: boolean }>>({});
+  const done = lines.every((l) => marks[l.productId]);
+  const set = (productId: string, patch: Partial<{ state: 'ok' | 'missing'; pallets: number; boxes: number; obs: boolean }>) =>
+    setMarks((m) => ({ ...m, [productId]: { ...(m[productId] ?? { state: 'ok', pallets: 0, boxes: 0, obs: true }), ...patch } }));
+  const missing = lines.filter((l) => marks[l.productId]?.state === 'missing' && (marks[l.productId].pallets || marks[l.productId].boxes));
+  const save = async () => {
+    const at = Date.now();
+    const day = nextWorkday(todayLocal());
+    for (const l of missing) {
+      const m = marks[l.productId];
+      const product = products.find((p) => p.id === l.productId);
+      if (product?.obsBlocked || m.obs)
+        await db.obs.put({ id: newId(), productId: l.productId, orderId: order.id, customerId: order.customerId, pallets: m.pallets, boxes: m.boxes, day, requestedAt: at, workerIds: crew, status: product?.obsBlocked ? 'notAllowed' : 'requested' });
+      // Without OBS the shortage still reaches the managers, as a deviation on the delivery.
+      else await db.deviations.put({ id: newId(), day: todayLocal(), productId: l.productId, kind: 'loading', loadingKind: 'missing', note: `${product?.name ?? '?'}: ${qtyText(t, m.pallets, m.boxes)} ${t('prep.noObsNote')}`, at, orderId: order.id, workerIds: crew });
+    }
+    await db.orders.update(order.id, { prepared: { at, workerIds: crew, missing: missing.map((l) => ({ productId: l.productId, pallets: marks[l.productId].pallets, boxes: marks[l.productId].boxes })) } });
+    onClose();
+  };
+  return (
+    <Modal title={t('prep.title')} onClose={onClose}>
+      <p className="small muted">{t('prep.hint')}</p>
+      <ul className="product-rows prep-rows">
+        {lines.map((l) => {
+          const p = products.find((x) => x.id === l.productId);
+          const m = marks[l.productId];
+          return (
+            <li key={l.productId} className={m ? (m.state === 'ok' ? 'dock-line-ok' : 'dock-line-problem') : ''}>
+              <span className="prep-head">
+                <span>
+                  <strong>{p?.name ?? '?'}</strong> <span className="muted">{p?.code}</span>
+                  <br />
+                  <span className="dock-qty">{qtyText(t, l.pallets, l.boxes)}</span>
+                </span>
+                <span className="prep-choices">
+                  <button type="button" className={`button ${m?.state === 'ok' ? 'button-primary' : ''}`} aria-pressed={m?.state === 'ok'} onClick={() => set(l.productId, { state: 'ok' })}>
+                    ✓ {t('prep.inPlace')}
+                  </button>
+                  <button type="button" className={`button ${m?.state === 'missing' ? 'button-primary' : ''}`} aria-pressed={m?.state === 'missing'} onClick={() => set(l.productId, { state: 'missing', pallets: l.pallets, boxes: l.boxes, obs: !p?.obsBlocked })}>
+                    ⚠ {t('dock.lineMissing')}
+                  </button>
+                </span>
+              </span>
+              {m?.state === 'missing' && (
+                <div className="prep-missing">
+                  <span className="field-label">{t('prep.howMuch')}</span>
+                  <span className="order-steppers prep-steppers">
+                    <span className="small muted">{t('pack.palletsWord')}</span>
+                    <Stepper value={m.pallets} label={`${p?.name} ${t('pack.palletsWord')}`} onChange={(n) => set(l.productId, { pallets: Math.min(n, l.pallets) })} />
+                    <span className="small muted">{t('pack.boxesWord')}</span>
+                    <Stepper value={m.boxes} label={`${p?.name} ${t('pack.boxesWord')}`} onChange={(n) => set(l.productId, { boxes: n })} />
+                  </span>
+                  {p?.obsBlocked ? (
+                    <p className="small warn-text">⛔ {t('prep.obsBlocked')}</p>
+                  ) : (
+                    <label className="check-row big-check">
+                      <input type="checkbox" checked={m.obs} onChange={(e) => set(l.productId, { obs: e.target.checked })} />
+                      <span>
+                        <strong>{t('prep.askObs', { day: new Intl.DateTimeFormat('sv-SE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${nextWorkday(todayLocal())}T00:00:00Z`)) })}</strong>
+                        <br />
+                        <span className="small muted">{t('prep.askObsHint')}</span>
+                      </span>
+                    </label>
+                  )}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <button type="button" className="button button-primary pack-start" disabled={!done} onClick={() => void save()}>
+        {missing.length ? t('prep.saveMissing', { n: missing.length }) : t('prep.saveReady')}
+      </button>
+    </Modal>
   );
 }
 

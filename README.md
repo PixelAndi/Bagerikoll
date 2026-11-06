@@ -129,6 +129,18 @@ line's amount, Ändra and Flytta.
 - Until there is a shared server, a count made on a phone stays on the phone – read its data file
   in on the tablet (Mer → Datafil). The page says so.
 
+### Förbered and OBS
+
+Right after production, the person putting a delivery into the freezer taps **🧊 Förbered** and
+marks each product **I frysen**, or **Saknas** with how many pallets and boxes. With nothing
+missing the delivery shows "Klar i frysen – väntar på leverans". For a missing product, **OBS**
+(urgent production first thing on the next working day) is asked for – ticked by default – unless
+a manager has blocked OBS for that product (Produktion → "OBS: vilka produkter får göras akut":
+some need more people than are in early); then the screen says so and the shortage still reaches
+the managers. The managers' **OBS card** (Produktion and Kontor) lists each request – product,
+amount, customer and order, who asked and when – with Planera / Neka (or Planera ändå / Sett for
+a blocked product) and then Klar.
+
 ### Loading
 
 - **Today's deliveries** – the orders picked up today, plus earlier ones from the last week not

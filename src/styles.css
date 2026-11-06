@@ -1912,3 +1912,18 @@ input[type='checkbox'] {
 .count-input .button-primary { min-height: 48px; }
 .dock-stock { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dock-stock .dock-count-buttons { justify-content: flex-start; }
+
+/* Förbered (freezer) and OBS. */
+.dock-buttons-3 { grid-template-columns: 1fr 1fr 1.6fr; }
+.dock-prepare { background: var(--cal-vacation); border-color: var(--cal-vacation-strong); }
+.dock-prepared { font-weight: 700; margin: 6px 0; }
+.prep-rows li { display: block; padding: 8px; border-radius: 10px; margin-bottom: 4px; }
+.prep-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.prep-choices { display: flex; gap: 8px; }
+.prep-choices .button { min-height: 52px; min-width: 120px; }
+.prep-missing { margin-top: 8px; }
+.prep-steppers { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px; margin-bottom: 6px; }
+.obs-list li { align-items: center; padding: 6px 0; border-top: 1px solid var(--cal-missing-strong); }
+.obs-list li:first-child { border-top: 0; }
+.obs-buttons { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.obs-allow { margin: 0; }

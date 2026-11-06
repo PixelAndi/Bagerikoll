@@ -9,6 +9,7 @@ import { sortProducts } from '../domain/production.ts';
 import type { Deviation, DeviationKind, Order, Product } from '../domain/types.ts';
 import { Card, Field, Fold, Modal, Notice, Page } from './common.tsx';
 import { LoadingDeviations } from './LoadingDeviations.tsx';
+import { ObsAllowList, ObsRequests } from './ObsRequests.tsx';
 import { OrderEditor, Stepper } from './OrderEditor.tsx';
 
 // Produktion (managers, made for a phone): the day's plan at a glance – how many doughs each
@@ -120,6 +121,7 @@ function Production() {
       </section>
 
       <LoadingDeviations />
+      <ObsRequests />
 
       <ToCheck input={input} products={products} onDeviation={(productId, d) => setDeviationFor({ productId, day: d })} dayName={dayName} />
 
@@ -138,6 +140,8 @@ function Production() {
       <Fold title={t('prod.stock')} sub={t('prod.stockSub')}>
         <StockList input={input} products={products} onCount={setCountFor} />
       </Fold>
+
+      <ObsAllowList />
 
       <Fold title={t('prod.history')} sub={t('prod.historySub')}>
         <History input={input} products={products} />
