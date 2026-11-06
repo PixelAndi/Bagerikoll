@@ -4,13 +4,14 @@ import { useApp } from '../app-context.ts';
 import { useCatalog } from '../data.ts';
 import { addDays, isoWeek, mondayOf, todayLocal, type LocalDate } from '../days.ts';
 import { db } from '../db.ts';
-import { accountingRows, deliveredDiffers, deliveredOrders, profitBy, profitOf, weekStatus, type AccountingRow, type Profit } from '../domain/accounting.ts';
+import { accountingRows, deliveredOrders, profitBy, profitOf, weekStatus, type AccountingRow, type Profit } from '../domain/accounting.ts';
 import { accountingWorkbook, explain } from '../domain/accountingSheet.ts';
 import { accountingSummary, costOn, orderTotals, priceOn } from '../domain/office.ts';
 import type { Product } from '../domain/types.ts';
 import { xlsx } from '../xlsx.ts';
 import { Card, Notice, Page } from './common.tsx';
 import { PrintSheet, Summary, SummaryTable } from './OfficeView.tsx';
+import { OrderBook } from './OrderBook.tsx';
 import { PriceEditor } from './PriceEditor.tsx';
 
 // Ekonomi (accounting; a device can be set to show only this): a week at a time, in calendar
@@ -168,55 +169,8 @@ function Accounting() {
 
       <ProfitSection rows={rows} days={days} dayName={dayName} />
 
-      <div className="office-week acc-week">
-        {days.map((d) => {
-          const list = rows.filter((r) => r.day === d);
-          const open = status.open.filter((o) => o.day === d);
-          return (
-            <section key={d} className={`office-day ${d === today ? 'office-today' : ''}`}>
-              <header className="office-day-head">
-                <strong>{dayName(d)}</strong>
-                <span className="small">{money(list.reduce((s, r) => s + (r.calc.amount ?? 0), 0))}</span>
-              </header>
-              {groupByOrder(list).map((g) => (
-                <article key={g[0].order.id} className="office-order office-full acc-order">
-                  <div className="office-order-head">
-                    <span>
-                      {g[0].order.orderNumber && <strong>#{g[0].order.orderNumber} </strong>}
-                      <strong>{g[0].customer?.name ?? '?'}</strong>
-                    </span>
-                    <span className="cal-chip cal-chip-ok">✓ {t('accounting.delivered')}</span>
-                  </div>
-                  {deliveredDiffers(g[0].order) && <p className="small warn-text">{t('accounting.otherQty')}</p>}
-                  <ul className="acc-lines">
-                    {g.map((r) => (
-                      <li key={r.line.productId}>
-                        <span>
-                          {r.product?.name ?? '?'} <span className="muted">{r.product?.code}</span>
-                        </span>
-                        <span className="small acc-calc">{explain(r.calc.pallets, r.calc.boxes, r.calc.boxesPerPallet, r.calc.palletFrom, r.calc.boxFrom, r.calc.price?.perPallet, r.calc.price?.perBox, r.calc.missing)}</span>
-                        <strong className={r.calc.amount === undefined ? 'proto-bad' : ''}>{r.calc.amount === undefined ? '–' : money(r.calc.amount)}</strong>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              ))}
-              {open.map((o) => (
-                <article key={o.id} className="office-order office-partly acc-order">
-                  <div className="office-order-head">
-                    <span>
-                      {o.orderNumber && <strong>#{o.orderNumber} </strong>}
-                      <strong>{customers.find((c) => c.id === o.customerId)?.name ?? '?'}</strong>
-                    </span>
-                    <span className="cal-chip cal-chip-warn">{t('accounting.notYet')}</span>
-                  </div>
-                  <p className="small muted">{t('office.orderPallets', { pallets: orderTotals([o]).pallets })}</p>
-                </article>
-              ))}
-            </section>
-          );
-        })}
-      </div>
+      <p className="small muted book-legend">{t('book.legend')}</p>
+      <OrderBook monday={monday} orders={orders} mode="accounting" today={today} />
 
       <section className="card">
         <h2 className="card-title">{t('accounting.summaryTitle')}</h2>
@@ -262,16 +216,6 @@ function Accounting() {
     </Page>
   );
 }
-
-const groupByOrder = (rows: AccountingRow[]) => {
-  const groups: AccountingRow[][] = [];
-  for (const r of rows) {
-    const g = groups.find((x) => x[0].order.id === r.order.id);
-    if (g) g.push(r);
-    else groups.push([r]);
-  }
-  return groups;
-};
 
 /** The delivered rows with their calculation, as on the spreadsheet (for printing). */
 function RowsTable({ rows, dayName }: { rows: AccountingRow[]; dayName: (d: LocalDate) => string }) {

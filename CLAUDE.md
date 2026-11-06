@@ -69,6 +69,13 @@ planning (`OrderLine.boxesPerPallet`, `domain/pallet.ts`); a run takes it from t
 at its start (`Run.orderId/boxesPerPallet`) and shows it with `PalletIcon` (EUR pallet, 4 boxes a
 layer by default, `Product.boxesPerLayer`).
 
+**The order book** (`ui/OrderBook.tsx`, owner's layout): Mon–Fri left to right like the paper
+book; order header = customer + billing marking (`Brand.code`, `billerCode`) + order number; lines
+= name, art.no., amount, change marks (`Order.firstLines` kept on the first edit by
+`editedOrder`; `lineChange`, `removedLines`; dock differences from `Order.delivered`). Shared by
+Kontor (`mode="office"`: ticks, boxes per pallet, edit, move, drag) and Ekonomi
+(`mode="accounting"`: read only, amounts) – one template, separate pages per role.
+
 **Admin-only = only what the owner explicitly makes admin-only.** Don't hide
 anything else behind the PIN. Now admin-only: managing names, customers, products and
 brands; Produktion and Kontor (the managers' parts; or a manager's device set in Admin); this device's station name and the workstation lock (and unlocking

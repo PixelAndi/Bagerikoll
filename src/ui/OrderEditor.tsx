@@ -4,7 +4,7 @@ import { useApp } from '../app-context.ts';
 import { useCatalog } from '../data.ts';
 import type { LocalDate } from '../days.ts';
 import { db, newId } from '../db.ts';
-import { keepPlanned } from '../domain/office.ts';
+import { editedOrder } from '../domain/office.ts';
 import { sortProducts } from '../domain/production.ts';
 import type { Order, OrderLine } from '../domain/types.ts';
 import { Field, Modal, Notice } from './common.tsx';
@@ -52,7 +52,8 @@ export function OrderEditor({ order, day, onClose }: { order?: Order; day: Local
     const ordered = [...sorted.map((p) => kept.find((l) => l.productId === p.id)), ...kept.filter((l) => !sorted.some((p) => p.id === l.productId))].filter((l): l is OrderLine => !!l);
     const fields = { orderNumber: orderNumber.trim() || undefined, customerId, day: orderDay, note: note.trim() || undefined };
     // A line whose amount changed is planned again from scratch; the others keep their tick.
-    if (order) await db.orders.update(order.id, { ...fields, lines: keepPlanned(order.lines, ordered) });
+    // A changed order keeps how it was first entered, so the change shows (to managers and accounting).
+    if (order) await db.orders.update(order.id, { ...fields, ...editedOrder(order, ordered) });
     else await db.orders.put({ id: newId(), ...fields, lines: ordered, createdAt: Date.now() });
     onClose();
   };

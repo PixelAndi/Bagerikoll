@@ -1852,3 +1852,23 @@ input[type='checkbox'] {
 .margin-bar i.profit-low { background: var(--cal-missing-strong); }
 .margin-bar i.profit-bad { background: var(--error); }
 .cost-row { grid-template-columns: 1.3fr 1fr 1fr auto; }
+
+/* The order book (Kontor and Ekonomi): Monday to Friday left to right, as the paper book. */
+@media (min-width: 1200px) { .order-book { grid-template-columns: repeat(var(--days, 5), minmax(0, 1fr)); gap: 8px; } }
+.book-day::first-letter { text-transform: uppercase; }
+.book-day-amount { width: 100%; text-align: right; font-weight: 700; }
+.book-order-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
+.book-customer { font-size: 1.02rem; }
+.biller-badge { background: var(--brand, var(--primary)); color: #fff; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.04em; padding: 1px 6px; border-radius: 5px; }
+.book-number { font-size: 1.02rem; font-variant-numeric: tabular-nums; }
+.book-status { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; }
+.book-status .cal-chip { font-size: 0.72rem; padding: 2px 8px; }
+.book-code { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.85em; }
+.book-lines li { padding: 2px 0; }
+.book-lines li.book-changed { border-left: 3px solid var(--cal-missing-strong); padding-left: 6px; margin-left: -3px; background: color-mix(in srgb, var(--cal-missing) 45%, transparent); border-radius: 0 6px 6px 0; }
+.book-mark { display: block; font-size: 0.78rem; font-weight: 700; color: var(--cal-missing-strong); }
+.book-mark-dock { color: var(--error); }
+.book-removed .office-line-text { text-decoration: line-through; opacity: 0.6; }
+.book-amount { display: block; text-align: right; font-weight: 700; font-size: 0.85rem; }
+.book-legend { margin: 4px 0 8px; }
+.order-book .office-order-foot .link-button { min-height: 36px; }

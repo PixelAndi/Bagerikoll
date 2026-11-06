@@ -214,3 +214,51 @@ export function summaryCsv(summary: BillerSummary[], label: string, noBiller: st
       for (const r of c.rows) rows.push([label, b.brand?.name ?? noBiller, c.customer?.name ?? '?', r.product?.name ?? '?', r.product?.code ?? '', String(r.pallets), String(r.boxes), money(r.amount)]);
   return rows.map((r) => r.map(cell).join(';')).join('\r\n');
 }
+
+/** A billing company's short marking: its code, else its capitals ("Bageri Exempel" → "BE"), else its first three letters. */
+export function billerCode(brand: Pick<Brand, 'name' | 'code'>): string {
+  if (brand.code?.trim()) return brand.code.trim().toUpperCase();
+  const caps = brand.name.match(/\p{Lu}/gu) ?? [];
+  return caps.length >= 2 ? caps.join('') : brand.name.slice(0, 3).toUpperCase();
+}
+
+export interface LineChange {
+  /** Edited after it was first entered: what it was then. */
+  was?: { pallets: number; boxes: number };
+  /** Added after the order was first entered. */
+  added?: boolean;
+  /** The loading dock loaded something else: what was loaded. */
+  delivered?: { pallets: number; boxes: number };
+}
+
+/** What changed about one product on an order: in the office after entry, and at the loading dock. */
+export function lineChange(order: Order, productId: string): LineChange {
+  const now = order.lines.find((l) => l.productId === productId);
+  const first = order.firstLines?.find((l) => l.productId === productId && (l.pallets || l.boxes));
+  const change: LineChange = {};
+  if (order.firstLines && now) {
+    if (!first) change.added = true;
+    else if (first.pallets !== now.pallets || first.boxes !== now.boxes) change.was = { pallets: first.pallets, boxes: first.boxes };
+  }
+  const d = order.delivered?.find((x) => x.productId === productId);
+  if (order.delivered && now && (now.pallets || now.boxes)) {
+    const got = d ?? { pallets: 0, boxes: 0 };
+    if (got.pallets !== now.pallets || got.boxes !== now.boxes) change.delivered = { pallets: got.pallets, boxes: got.boxes };
+  }
+  return change;
+}
+
+/** Products that were on the order when first entered but have been taken off since. */
+export const removedLines = (order: Order): OrderLine[] =>
+  (order.firstLines ?? []).filter((f) => (f.pallets || f.boxes) && !order.lines.some((l) => l.productId === f.productId && (l.pallets || l.boxes)));
+
+/** The lines to store after an edit, and what the order looked like first (kept on the first real change). */
+export function editedOrder(order: Order, lines: OrderLine[]): { lines: OrderLine[]; firstLines?: OrderLine[] } {
+  const kept = keepPlanned(order.lines, lines);
+  const same = (a: OrderLine[], b: OrderLine[]) => {
+    const live = (x: OrderLine[]) => x.filter((l) => l.pallets || l.boxes);
+    return live(a).length === live(b).length && live(a).every((l) => live(b).some((m) => m.productId === l.productId && m.pallets === l.pallets && m.boxes === l.boxes));
+  };
+  if (same(order.lines, kept)) return { lines: kept, firstLines: order.firstLines };
+  return { lines: kept, firstLines: order.firstLines ?? order.lines.map(({ productId, pallets, boxes, boxesPerPallet }) => ({ productId, pallets, boxes, boxesPerPallet })) };
+}

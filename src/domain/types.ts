@@ -19,6 +19,8 @@ export interface Worker {
 export interface Brand {
   id: string;
   name: string;
+  /** A short marking shown on orders, e.g. "ABC" (else made from the name). */
+  code?: string;
   /** A colour for its chips and squares (a CSS colour). */
   color: string;
   updatedAt?: number;
@@ -144,6 +146,8 @@ export interface Order {
   /** The pickup day (also the day it is produced and packed). */
   day: LocalDate;
   lines: OrderLine[];
+  /** The products as first entered, kept when the order is first changed – to show what changed. */
+  firstLines?: OrderLine[];
   note?: string;
   createdAt: number;
   /** Loaded and sent: from then on it no longer counts in stock. */

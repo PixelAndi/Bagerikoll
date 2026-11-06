@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isoWeek, mondayOf } from '../days.ts';
-import { accountingSummary, duplicateNumbers, orderTotals, keepPlanned, lineAmount, planState, priceOn, summaryCsv } from './office.ts';
+import { accountingSummary, billerCode, duplicateNumbers, editedOrder, lineChange, orderTotals, removedLines, keepPlanned, lineAmount, planState, priceOn, summaryCsv } from './office.ts';
 import type { Brand, Customer, Order, Product } from './types.ts';
 
 // Made-up names and prices only.
@@ -114,5 +114,30 @@ describe('the weekly summary for accounting', () => {
     const csv = summaryCsv(s, 'v. 2', 'Inget bolag').split('\r\n');
     expect(csv[1]).toBe('v. 2;Bolag Ett;Kund Ett;Testbröd;;1;4;1200,00');
     expect(csv[3]).toBe('v. 2;Inget bolag;Kund Tre;Utan pris;;1;0;');
+  });
+});
+
+describe('what changed on an order', () => {
+  const o = order('2030-01-07', 'k1', [{ productId: 'p1', pallets: 4, boxes: 0 }, { productId: 'p2', pallets: 2, boxes: 0 }]);
+  it('keeps the first version on the first real change, and names each change', () => {
+    expect(editedOrder(o, o.lines).firstLines).toBeUndefined();
+    const e = editedOrder(o, [{ productId: 'p1', pallets: 3, boxes: 0 }, { productId: 'p3', pallets: 1, boxes: 0 }]);
+    const changed = { ...o, ...e };
+    expect(lineChange(changed, 'p1')).toEqual({ was: { pallets: 4, boxes: 0 } });
+    expect(lineChange(changed, 'p3')).toEqual({ added: true });
+    expect(removedLines(changed).map((l) => l.productId)).toEqual(['p2']);
+    // A second edit keeps the very first version.
+    expect(editedOrder(changed, [{ productId: 'p1', pallets: 5, boxes: 0 }]).firstLines?.find((l) => l.productId === 'p1')?.pallets).toBe(4);
+  });
+  it('says what the dock loaded when it differs', () => {
+    const d = { ...o, delivered: [{ productId: 'p1', pallets: 4, boxes: 0 }, { productId: 'p2', pallets: 1, boxes: 10 }] };
+    expect(lineChange(d, 'p1')).toEqual({});
+    expect(lineChange(d, 'p2')).toEqual({ delivered: { pallets: 1, boxes: 10 } });
+    expect(lineChange({ ...o, delivered: [] }, 'p1')).toEqual({ delivered: { pallets: 0, boxes: 0 } });
+  });
+  it('marks the billing company with its code or its capitals', () => {
+    expect(billerCode({ name: 'Bolag Ett', code: 'bet' })).toBe('BET');
+    expect(billerCode({ name: 'Bageri Exempel' })).toBe('BE');
+    expect(billerCode({ name: 'Testbolaget' })).toBe('TES');
   });
 });

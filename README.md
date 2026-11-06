@@ -74,6 +74,22 @@ to confirm; keep the paper form alongside until they have.
 - **A device locked to a workstation** – the packing station or the loading dock – shows only
   that, with no tabs; "Lås upp" takes the PIN.
 
+## The order book (Kontor and Ekonomi)
+
+The paper order book, digital – one shared layout (`ui/OrderBook.tsx`) on two pages:
+**Monday to Friday left to right** (Saturday and Sunday only when they have orders), each day
+with its pallets; each order as the book writes it: **the customer, the billing company's marking**
+(e.g. "ABC" – set per billing company in Admin, else made from its capitals) **and the order
+number**; under it each product with **name, article number and amount**, marked when it changed:
+✎ changed after the order was entered ("ändrad, var 4 pall", "tillagd efteråt", "borttagen" –
+the first version is kept on the first edit), 🚚 loaded another count at the dock. No mark = as
+ordered.
+
+- **Kontor (managers)**: the same book plus the planned-for-production ticks, boxes per pallet,
+  Ändra, Flytta and dragging to another day.
+- **Ekonomi (accounting)**: read only – delivered or not, each line's amount (of what was
+  delivered), each order's and each day's total.
+
 ## Ekonomi (accounting)
 
 - **A week at a time, in calendar order.** At the top: whether the week is **complete** – every

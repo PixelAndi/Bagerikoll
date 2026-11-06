@@ -4,13 +4,12 @@ import { useApp } from '../app-context.ts';
 import { useCatalog } from '../data.ts';
 import { addDays, isoWeek, mondayOf, todayLocal, type LocalDate } from '../days.ts';
 import { db } from '../db.ts';
-import { accountingSummary, duplicateNumbers, lineAmount, orderTotals, planState, priceOn, summaryCsv, type BillerSummary } from '../domain/office.ts';
-import { boxCountOptions, lineBoxesPerPallet, palletLayers } from '../domain/pallet.ts';
-import type { Order, Product } from '../domain/types.ts';
-import { Card, Field, Modal, Notice, Page } from './common.tsx';
+import { accountingSummary, billerCode, duplicateNumbers, orderTotals, planState, priceOn, summaryCsv, type BillerSummary } from '../domain/office.ts';
+import type { Order } from '../domain/types.ts';
+import { Card, Modal, Notice, Page } from './common.tsx';
 import { LoadingDeviations } from './LoadingDeviations.tsx';
+import { OrderBook } from './OrderBook.tsx';
 import { OrderEditor } from './OrderEditor.tsx';
-import { PalletBadge } from './PalletIcon.tsx';
 
 // Kontor (managers; a computer, tablet or phone): the paper orders entered on the day they are
 // picked up, a week at a time. Each product on an order is ticked as planned for production; an
@@ -163,11 +162,8 @@ function Office() {
         </Card>
       )}
 
-      <div className="office-week">
-        {days.map((d) => (
-          <DayColumn key={d} day={d} label={dayName(d)} today={d === today} orders={byDay(d)} dupes={dupes} onNew={() => setEditing({ newOn: d })} onEdit={setEditing} onMove={setMoving} onPrint={() => setPrint({ kind: 'day', day: d })} />
-        ))}
-      </div>
+      <p className="small muted book-legend">{t('book.legend')}</p>
+      <OrderBook monday={monday} orders={orders} mode="office" today={today} dupes={dupes} onNew={(d) => setEditing({ newOn: d })} onEdit={setEditing} onMove={setMoving} onPrintDay={(d) => setPrint({ kind: 'day', day: d })} />
 
       <section className="card" id="office-summary">
         <div className="cal-focus-head">
@@ -200,136 +196,6 @@ function Office() {
       {editing && <OrderEditor order={'newOn' in editing ? undefined : editing} day={'newOn' in editing ? editing.newOn : editing.day} onClose={() => setEditing(null)} />}
       {moving && <MoveOrder order={moving} onClose={() => setMoving(null)} dayName={dayName} />}
     </Page>
-  );
-}
-
-/** A day of the week: its orders; a computer can drop a dragged order here to move it. */
-function DayColumn({ day, label, today, orders, dupes, onNew, onEdit, onMove, onPrint }: { day: LocalDate; label: string; today: boolean; orders: Order[]; dupes: Set<string>; onNew: () => void; onEdit: (o: Order) => void; onMove: (o: Order) => void; onPrint: () => void }) {
-  const { t } = useApp();
-  const [over, setOver] = useState(false);
-  const live = orders.filter((o) => !o.cancelled);
-  return (
-    <section
-      className={`office-day ${today ? 'office-today' : ''} ${over ? 'office-drop' : ''}`}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setOver(true);
-      }}
-      onDragLeave={() => setOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setOver(false);
-        const id = e.dataTransfer.getData('text/plain');
-        if (id) void db.orders.update(id, { day });
-      }}
-    >
-      <header className="office-day-head">
-        <span>
-          <strong>{label}</strong>
-          <span className="small muted"> · {t(live.length === 1 ? 'office.dayCountOne' : 'office.dayCount', { n: live.length })}</span>
-        </span>
-        <span className="office-day-pallets" title={t('office.dayPallets')}>
-          {orderTotals(orders).pallets}
-          <span className="small"> {t('today.palletsShort')}</span>
-        </span>
-      </header>
-      {orders.map((o) => (
-        <OrderCard key={o.id} order={o} duplicate={!!o.orderNumber && dupes.has(o.orderNumber)} onEdit={() => onEdit(o)} onMove={() => onMove(o)} />
-      ))}
-      <div className="office-day-buttons">
-        <button type="button" className="button button-small" onClick={onNew}>
-          + {t('office.order')}
-        </button>
-        {live.length > 0 && (
-          <button type="button" className="link-button small" onClick={onPrint}>
-            🖨 {t('office.printDay')}
-          </button>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/** One order: number, customer, billing company, each product with its "planned" tick. */
-function OrderCard({ order, duplicate, onEdit, onMove }: { order: Order; duplicate: boolean; onEdit: () => void; onMove: () => void }) {
-  const { t } = useApp();
-  const { customers, products, brands } = useCatalog();
-  const customer = customers.find((c) => c.id === order.customerId);
-  const biller = brands.find((b) => b.id === customer?.billedBy);
-  const state = planState(order);
-  const [picking, setPicking] = useState<string | null>(null);
-  const pickProduct = products.find((p) => p.id === picking);
-  const toggle = (productId: string) =>
-    db.orders.update(order.id, { lines: order.lines.map((l) => (l.productId === productId ? { ...l, plannedAt: l.plannedAt ? undefined : Date.now() } : l)) });
-  const amount = order.lines.reduce<number | undefined>((s, l) => {
-    const a = lineAmount(l, products.find((p) => p.id === l.productId), order.day, order.customerId);
-    return s === undefined || a === undefined ? undefined : s + a;
-  }, 0);
-  return (
-    <article
-      className={`office-order ${order.cancelled ? 'office-cancelled' : state.full ? 'office-full' : state.planned ? 'office-partly' : ''}`}
-      draggable={!order.cancelled}
-      onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
-    >
-      <div className="office-order-head">
-        <span>
-          {order.orderNumber && <strong className={duplicate ? 'warn-text' : ''}>#{order.orderNumber} </strong>}
-          <strong>{customer?.name ?? '?'}</strong>
-          {biller && <span className="small muted"> · {biller.name}</span>}
-        </span>
-        {order.cancelled ? (
-          <span className="cal-chip">{t('prod.cancelled')}</span>
-        ) : state.full ? (
-          <span className="cal-chip cal-chip-ok">✓ {t('office.full')}</span>
-        ) : (
-          <span className="cal-chip cal-chip-warn">{t('office.partly', { planned: state.planned, total: state.total })}</span>
-        )}
-      </div>
-      <ul className="office-lines">
-        {order.lines
-          .filter((l) => l.pallets || l.boxes)
-          .map((l) => {
-            const p = products.find((x) => x.id === l.productId);
-            return (
-              <li key={l.productId}>
-                <label className={`office-line ${l.plannedAt ? 'on' : ''}`}>
-                  <input type="checkbox" checked={!!l.plannedAt} disabled={order.cancelled} onChange={() => void toggle(l.productId)} />
-                  <span className="office-line-text">
-                    <span className="office-line-name">
-                      {p?.name ?? '?'}
-                      {p?.code && <span className="muted"> {p.code}</span>}
-                    </span>
-                    <strong className="office-line-qty">{[l.pallets ? t('prod.nPallets', { n: l.pallets }) : '', l.boxes ? t('prod.nBoxes', { n: l.boxes }) : ''].filter(Boolean).join(' + ')}</strong>
-                  </span>
-                </label>
-                {p && l.pallets > 0 && (
-                  <button type="button" className={`bpp-chip ${lineBoxesPerPallet(l, p) ? '' : 'bpp-missing'} ${l.boxesPerPallet && l.boxesPerPallet !== p.boxesPerPallet ? 'bpp-set' : ''}`} disabled={order.cancelled} onClick={() => setPicking(l.productId)}>
-                    {lineBoxesPerPallet(l, p) ? t('pallet.short', { boxes: lineBoxesPerPallet(l, p)! }) : t('pallet.unknown')}
-                  </button>
-                )}
-              </li>
-            );
-          })}
-      </ul>
-      {order.note && <p className="small muted">{order.note}</p>}
-      {order.shippedAt !== undefined && <p className="small ok">✓ {t('dock.loadedAt', { time: new Date(order.shippedAt).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) })}</p>}
-      {picking && pickProduct && <BoxCountPicker order={order} product={pickProduct} onClose={() => setPicking(null)} />}
-      <div className="office-order-foot">
-        <span className="small">
-          <strong>{t('office.orderPallets', { pallets: orderTotals([order]).pallets })}</strong>
-          {orderTotals([order]).boxes > 0 && ` + ${t('prod.nBoxes', { n: orderTotals([order]).boxes })}`}
-          <span className="muted"> · {amount === undefined ? t('office.noPriceShort') : money(amount)}</span>
-        </span>
-        <span>
-          <button type="button" className="link-button small" onClick={onMove} disabled={order.cancelled}>
-            {t('office.move')}
-          </button>
-          <button type="button" className="link-button small" onClick={onEdit}>
-            {t('admin.edit')}
-          </button>
-        </span>
-      </div>
-    </article>
   );
 }
 
@@ -484,7 +350,7 @@ function OrdersSheet({ title, days, byDay, dayName }: { title: string; days: Loc
                         <tr key={`${o.id}-${l.productId}`} className={i === 0 ? 'print-order-start' : ''}>
                           <td>{i === 0 && o.orderNumber ? `#${o.orderNumber}` : ''}</td>
                           <td>{i === 0 ? c?.name : ''}</td>
-                          <td>{i === 0 ? (brands.find((b) => b.id === c?.billedBy)?.name ?? '') : ''}</td>
+                          <td>{i === 0 ? (() => { const b = brands.find((x) => x.id === c?.billedBy); return b ? billerCode(b) : ''; })() : ''}</td>
                           <td>
                             {p?.name ?? '?'} {p?.code && <span className="muted">{p.code}</span>}
                           </td>
@@ -524,46 +390,3 @@ function SummarySheet({ summary, title }: { summary: BillerSummary[]; title: str
   );
 }
 
-/**
- * Boxes per pallet for one product on an order, chosen while planning (it can differ by where the
- * order is delivered): the product's standard and the counts used before, each with its pallet,
- * or another number. The packers see it when they start the run.
- */
-function BoxCountPicker({ order, product, onClose }: { order: Order; product: Product; onClose: () => void }) {
-  const { t } = useApp();
-  const allOrders = useLiveQuery(() => db.orders.toArray(), []) ?? [];
-  const productId = product.id;
-  const line = order.lines.find((l) => l.productId === productId)!;
-  const current = lineBoxesPerPallet(line, product);
-  const [custom, setCustom] = useState(current && !boxCountOptions(product, allOrders, order.customerId).includes(current) ? String(current) : '');
-  const options = boxCountOptions(product, allOrders, order.customerId);
-  const choose = async (n: number | undefined) => {
-    // The product's own standard is stored as "not set", so a later change of the standard applies.
-    const value = n && n !== product.boxesPerPallet ? n : undefined;
-    await db.orders.update(order.id, { lines: order.lines.map((l) => (l.productId === productId ? { ...l, boxesPerPallet: value } : l)) });
-    onClose();
-  };
-  const customN = Number(custom);
-  return (
-    <Modal title={t('pallet.pickTitle', { product: product.name })} onClose={onClose}>
-      <p className="small muted">{t('pallet.pickHint')}</p>
-      <div className="bpp-options">
-        {options.map((n) => (
-          <button key={n} type="button" className={`bpp-option ${n === current ? 'on' : ''}`} aria-pressed={n === current} onClick={() => void choose(n)}>
-            <PalletBadge boxes={n} perLayer={product.boxesPerLayer} label={t('pallet.label', { boxes: n, layers: palletLayers(n, product.boxesPerLayer).layers })} unit={0.55} />
-            {n === product.boxesPerPallet && <span className="small muted">{t('pallet.standard')}</span>}
-          </button>
-        ))}
-      </div>
-      <div className="bpp-custom">
-        <Field label={t('pallet.other')}>
-          <input type="text" inputMode="numeric" value={custom} onChange={(e) => setCustom(e.target.value.replace(/\D/g, '').slice(0, 3))} />
-        </Field>
-        {customN > 0 && <PalletBadge boxes={customN} perLayer={product.boxesPerLayer} label={t('pallet.label', { boxes: customN, layers: palletLayers(customN, product.boxesPerLayer).layers })} unit={0.55} />}
-        <button type="button" className="button button-primary" disabled={!(customN > 0)} onClick={() => void choose(customN)}>
-          {t('admin.save')}
-        </button>
-      </div>
-    </Modal>
-  );
-}

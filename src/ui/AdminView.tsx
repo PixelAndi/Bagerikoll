@@ -95,6 +95,8 @@ function Brands() {
         {brands.map((b) => (
           <li key={b.id}>
             <input type="text" defaultValue={b.name} aria-label={t('admin.name')} onBlur={(e) => e.target.value.trim() && void db.brands.update(b.id, { name: e.target.value.trim() })} />
+            <input type="color" value={b.color} aria-label={t('admin.color')} onChange={(e) => void db.brands.update(b.id, { color: e.target.value })} />
+            <input type="text" className="code-input" defaultValue={b.code ?? ''} placeholder={t('admin.brandCode')} aria-label={t('admin.brandCode')} maxLength={5} onBlur={(e) => void db.brands.update(b.id, { code: e.target.value.trim().toUpperCase() || undefined })} />
           </li>
         ))}
       </ul>
