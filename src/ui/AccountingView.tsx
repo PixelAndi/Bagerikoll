@@ -73,28 +73,22 @@ function Accounting() {
     return (
       <PrintSheet
         onBack={() => setPrint(null)}
-        pdfName={print === 'full' ? `ekonomi-v${String(week.week).padStart(2, '0')}-${week.year}.pdf` : undefined}
-        onPdf={
-          print === 'book'
-            ? async () => {
-                const { saveOrderbookPdf } = await import('../pdf/orderbookPdf.ts');
-                await saveOrderbookPdf(buildOrderbook(orders, products, customers, brands, monday, weekLabel, dayName), `orderbok-v${String(week.week).padStart(2, '0')}-${week.year}.pdf`);
-              }
-            : undefined
-        }
-        onXlsx={
-          print === 'book'
-            ? async () => {
-                const sheets = orderbookSheets(buildOrderbook(orders, products, customers, brands, monday, weekLabel, dayName));
-                const blob = new Blob([xlsx(sheets) as Uint8Array<ArrayBuffer>], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = `orderbok-v${String(week.week).padStart(2, '0')}-${week.year}.xlsx`;
-                a.click();
-                setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-              }
-            : undefined
-        }
+        onPdf={async () => {
+          const { saveOrderbookPdf } = await import('../pdf/orderbookPdf.ts');
+          const mode = print === 'book' ? 'book' : 'accounting';
+          const name = `${mode === 'book' ? 'orderbok' : 'ekonomi'}-v${String(week.week).padStart(2, '0')}-${week.year}.pdf`;
+          await saveOrderbookPdf(buildOrderbook(orders, products, customers, brands, monday, weekLabel, dayName, mode), name, mode);
+        }}
+        onXlsx={async () => {
+          const mode = print === 'book' ? 'book' : 'accounting';
+          const sheets = orderbookSheets(buildOrderbook(orders, products, customers, brands, monday, weekLabel, dayName, mode), mode);
+          const blob = new Blob([xlsx(sheets) as Uint8Array<ArrayBuffer>], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `${mode === 'book' ? 'orderbok' : 'ekonomi'}-v${String(week.week).padStart(2, '0')}-${week.year}.xlsx`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }}
       >
         <h1 className="print-title">{print === 'book' ? `${t('accounting.orderBookTitle')} – ${weekLabel}` : `Ekonomi – ${weekLabel}`}</h1>
         {print === 'full' && <p className="print-status">{status.complete ? t('accounting.complete') : t('accounting.incomplete', { delivered: status.delivered.length, total: status.orders.length })}</p>}
@@ -319,7 +313,7 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
             <div key={d} className="week-day">
               <div className="week-day-head">
                 <span className="week-day-name">{dayName(d)}</span>
-                <span className="week-day-tot">{amounts ? `${t('office.orderPallets', { pallets })} · ${money(amount)}` : `${t('office.orderPallets', { pallets })} · ${kg(dayW.grossKg)}`}</span>
+                <span className="week-day-tot">{amounts ? money(amount) : `${t('office.orderPallets', { pallets })} · ${kg(dayW.grossKg)}`}</span>
               </div>
               {!list.length ? (
                 <p className="week-empty">{t('office.noOrdersDay')}</p>
@@ -349,8 +343,8 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
                         );
                       })}
                       <div className="week-order-foot">
-                        <span>{t('office.orderPallets', { pallets: palletsOf(o) })}{!amounts ? ` · ${kg(weightOf(o).grossKg)}` : ''}</span>
-                        {amounts && <span>{a.missing ? t('office.noPriceShort') : money(a.amount)}</span>}
+                        {!amounts && <span>{t('office.orderPallets', { pallets: palletsOf(o) })} · {kg(weightOf(o).grossKg)}</span>}
+                        {amounts && <span className="week-foot-amount">{a.missing ? t('office.noPriceShort') : money(a.amount)}</span>}
                       </div>
                     </div>
                   );
@@ -362,8 +356,7 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
       </div>
       <div className="week-total">
         <span>
-          {t('accounting.weekTotal')}: {t('office.orderPallets', { pallets: weekPallets })}
-          {!amounts && ` · ${kg(weekW.grossKg)}`}
+          {t('accounting.weekTotal')}: {amounts ? money(weekAmount) : `${t('office.orderPallets', { pallets: weekPallets })} · ${kg(weekW.grossKg)}`}
         </span>
         <span className="week-total-billers">
           {billerTotals.map((b) => (
