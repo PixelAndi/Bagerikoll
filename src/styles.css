@@ -2034,3 +2034,6 @@ input[type='checkbox'] {
 .schedule-name { display: flex; flex-direction: column; gap: 2px; }
 .schedule-expect { font-weight: 400; }
 .week-foot-amount { margin-left: auto; font-weight: 700; }
+
+.export-choices { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.export-choices .button { min-height: 52px; font-size: 1.05rem; }

@@ -4,15 +4,14 @@ import { useApp } from '../app-context.ts';
 import { useCatalog } from '../data.ts';
 import { addDays, isoWeek, mondayOf, todayLocal, type LocalDate } from '../days.ts';
 import { db } from '../db.ts';
-import { accountingRows, deliveredLines, deliveredOrders, profitBy, profitOf, weekStatus, type AccountingRow, type Profit } from '../domain/accounting.ts';
+import { accountingRows, deliveredOrders, profitBy, profitOf, weekStatus, type AccountingRow, type Profit } from '../domain/accounting.ts';
 import { accountingWorkbook } from '../domain/accountingSheet.ts';
 import { buildOrderbook, orderbookSheets } from '../domain/orderbook.ts';
-import { linesWeight, sumWeights } from '../domain/weight.ts';
-import { accountingSummary, billerCode, costOn, lineCalc, orderTotals, priceOn } from '../domain/office.ts';
-import type { Brand, Customer, Order, Product } from '../domain/types.ts';
+import { accountingSummary, costOn, orderTotals, priceOn } from '../domain/office.ts';
+import type { Product } from '../domain/types.ts';
 import { xlsx } from '../xlsx.ts';
-import { Card, Notice, Page } from './common.tsx';
-import { PrintSheet, Summary, SummaryTable } from './OfficeView.tsx';
+import { Card, Modal, Notice, Page } from './common.tsx';
+import { Summary } from './OfficeView.tsx';
 import { OrderBook } from './OrderBook.tsx';
 import { PriceEditor } from './PriceEditor.tsx';
 
@@ -69,45 +68,33 @@ function Accounting() {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
 
-  if (print)
-    return (
-      <PrintSheet
-        onBack={() => setPrint(null)}
-        onPdf={async () => {
-          const { saveOrderbookPdf } = await import('../pdf/orderbookPdf.ts');
-          const mode = print === 'book' ? 'book' : 'accounting';
-          const name = `${mode === 'book' ? 'orderbok' : 'ekonomi'}-v${String(week.week).padStart(2, '0')}-${week.year}.pdf`;
-          await saveOrderbookPdf(buildOrderbook(orders, products, customers, brands, monday, weekLabel, dayName, mode), name, mode);
-        }}
-        onXlsx={async () => {
-          const mode = print === 'book' ? 'book' : 'accounting';
-          const sheets = orderbookSheets(buildOrderbook(orders, products, customers, brands, monday, weekLabel, dayName, mode), mode);
-          const blob = new Blob([xlsx(sheets) as Uint8Array<ArrayBuffer>], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = `${mode === 'book' ? 'orderbok' : 'ekonomi'}-v${String(week.week).padStart(2, '0')}-${week.year}.xlsx`;
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        }}
-      >
-        <h1 className="print-title">{print === 'book' ? `${t('accounting.orderBookTitle')} – ${weekLabel}` : `Ekonomi – ${weekLabel}`}</h1>
-        {print === 'full' && <p className="print-status">{status.complete ? t('accounting.complete') : t('accounting.incomplete', { delivered: status.delivered.length, total: status.orders.length })}</p>}
-        <WeekSheet monday={monday} orders={orders} products={products} customers={customers} brands={brands} dayName={dayName} amounts={print === 'full'} />
-        {print === 'full' && (
-          <>
-            <h2 className="print-sub-title">{t('accounting.invoiceBasis')}</h2>
-            {summary.map((b) => (
-              <section key={b.brand?.id ?? 'none'} className="print-day">
-                <h2>
-                  {b.brand?.name ?? t('office.noBillerName')} – {money(b.amount)}
-                </h2>
-                <SummaryTable biller={b} />
-              </section>
-            ))}
-          </>
-        )}
-      </PrintSheet>
-    );
+  // Print or save the week: one generated landscape PDF (or Excel), no on-screen preview.
+  const [busy, setBusy] = useState(false);
+  const fileName = (ext: string) => `${print === 'book' ? 'orderbok' : 'ekonomi'}-v${String(week.week).padStart(2, '0')}-${week.year}.${ext}`;
+  const doExport = async (what: 'print' | 'pdf' | 'xlsx') => {
+    if (!print) return;
+    setBusy(true);
+    try {
+      const mode = print === 'book' ? 'book' : 'accounting';
+      const ob = buildOrderbook(orders, products, customers, brands, monday, weekLabel, dayName, mode);
+      if (what === 'xlsx') {
+        const blob = new Blob([xlsx(orderbookSheets(ob, mode)) as Uint8Array<ArrayBuffer>], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName('xlsx');
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      } else {
+        const { saveOrderbookPdf } = await import('../pdf/orderbookPdf.ts');
+        await saveOrderbookPdf(ob, fileName('pdf'), mode, what === 'print' ? 'print' : 'save');
+      }
+    } catch {
+      // leave the dialog open so they can try again
+    }
+    setBusy(false);
+    if (what !== 'print') setPrint(null);
+  };
+
 
   return (
     <Page
@@ -241,6 +228,23 @@ function Accounting() {
         </ul>
       </section>
       {pricing && <PriceEditor product={pricing} onClose={() => setPricing(null)} />}
+      {print && (
+        <Modal title={`${print === 'book' ? t('accounting.orderBookTitle') : t('nav.accounting')} – ${weekLabel}`} onClose={() => setPrint(null)}>
+          <p className="small muted">{t('export.hint')}</p>
+          <div className="export-choices">
+            <button type="button" className="button button-primary" disabled={busy} onClick={() => void doExport('print')}>
+              🖨 {t('export.print')}
+            </button>
+            <button type="button" className="button" disabled={busy} onClick={() => void doExport('pdf')}>
+              ⬇ {t('print.savePdf')}
+            </button>
+            <button type="button" className="button" disabled={busy} onClick={() => void doExport('xlsx')}>
+              ⬇ {t('print.saveExcel')}
+            </button>
+          </div>
+          {busy && <p className="small muted">{t('export.working')}</p>}
+        </Modal>
+      )}
     </Page>
   );
 }
@@ -252,125 +256,6 @@ function Accounting() {
  * the order's amount – with day and week totals. Black on white, thin rules, no fills, for A4
  * landscape with little ink.
  */
-function WeekSheet({ monday, orders, products, customers, brands, dayName, amounts = true }: { monday: LocalDate; orders: Order[]; products: Product[]; customers: Customer[]; brands: Brand[]; dayName: (d: LocalDate) => string; amounts?: boolean }) {
-  const { t } = useApp();
-  const live = orders.filter((o) => !o.cancelled);
-  const base = Array.from({ length: 5 }, (_, i) => addDays(monday, i));
-  const extra = [addDays(monday, 5), addDays(monday, 6)].filter((d) => live.some((o) => o.day === d));
-  const days = [...base, ...extra];
-  const byDay = (d: LocalDate) => live.filter((o) => o.day === d).sort((a, b) => (a.orderNumber ?? '').localeCompare(b.orderNumber ?? '', 'sv', { numeric: true }) || a.createdAt - b.createdAt);
-  const product = (id: string) => products.find((p) => p.id === id);
-  const loaded = (o: Order) => o.shippedAt !== undefined;
-  const linesOf = (o: Order) => (amounts && loaded(o) ? deliveredLines(o) : o.lines).filter((l) => l.pallets || l.boxes);
-  const orderAmount = (o: Order) => {
-    let amount = 0;
-    let missing = false;
-    for (const l of linesOf(o)) {
-      const a = lineCalc(l, product(l.productId), o.day, o.customerId).amount;
-      if (a === undefined) missing = true;
-      else amount += a;
-    }
-    return { amount, missing };
-  };
-  const orderPallets = (o: Order) => orderTotals([{ ...o, lines: linesOf(o) }]).pallets;
-  const mark = (o: Order) => {
-    const b = brands.find((x) => x.id === customers.find((c) => c.id === o.customerId)?.billedBy);
-    return b ? billerCode(b) : '';
-  };
-  const kg = (n: number) => `${n.toLocaleString('sv-SE', { maximumFractionDigits: 1 })} kg`;
-  const pos = (o: Order) => !!customers.find((c) => c.id === o.customerId)?.palletTransfer;
-  const weightOf = (o: Order) => linesWeight(linesOf(o), product, { looseOnPallet: pos(o) });
-  // The order book is for shipping, so it counts the real (shipping) pallets, PÖS included.
-  const palletsOf = (o: Order) => (amounts ? orderPallets(o) : weightOf(o).pallets);
-  const weekW = sumWeights(live.map(weightOf));
-  const weekAmount = live.reduce((s, o) => s + orderAmount(o).amount, 0);
-  const weekPallets = live.reduce((s, o) => s + palletsOf(o), 0);
-  // Split the week by billing company over the same orders as the totals (not delivered-only), so it reconciles.
-  const billerMap = new Map<string, { brand?: Brand; amount: number }>();
-  for (const o of live) {
-    const brand = brands.find((x) => x.id === customers.find((c) => c.id === o.customerId)?.billedBy);
-    const key = brand?.id ?? 'none';
-    const cur = billerMap.get(key) ?? { brand, amount: 0 };
-    cur.amount += orderAmount(o).amount;
-    billerMap.set(key, cur);
-  }
-  const billerPallets = new Map<string, number>();
-  for (const o of live) {
-    const brand = brands.find((x) => x.id === customers.find((c) => c.id === o.customerId)?.billedBy);
-    billerPallets.set(brand?.id ?? 'none', (billerPallets.get(brand?.id ?? 'none') ?? 0) + palletsOf(o));
-  }
-  const billerTotals = [...billerMap.values()].map((b) => ({ ...b, pallets: billerPallets.get(b.brand?.id ?? 'none') ?? 0 })).sort((a, b) => (a.brand?.name ?? 'ÿ').localeCompare(b.brand?.name ?? 'ÿ', 'sv'));
-
-  return (
-    <section className={`week-sheet ${amounts ? '' : 'book'}`}>
-      <div className="week-cols" style={{ ['--cols' as string]: String(days.length) }}>
-        {days.map((d) => {
-          const list = byDay(d);
-          const pallets = list.reduce((s, o) => s + palletsOf(o), 0);
-          const amount = list.reduce((s, o) => s + orderAmount(o).amount, 0);
-          const dayW = sumWeights(list.map(weightOf));
-          return (
-            <div key={d} className="week-day">
-              <div className="week-day-head">
-                <span className="week-day-name">{dayName(d)}</span>
-                <span className="week-day-tot">{amounts ? money(amount) : `${t('office.orderPallets', { pallets })} · ${kg(dayW.grossKg)}`}</span>
-              </div>
-              {!list.length ? (
-                <p className="week-empty">{t('office.noOrdersDay')}</p>
-              ) : (
-                list.map((o) => {
-                  const a = orderAmount(o);
-                  return (
-                    <div key={o.id} className="week-order">
-                      <div className="week-order-head">
-                        <span className="week-cust">
-                          {customers.find((c) => c.id === o.customerId)?.name ?? '?'}
-                          {mark(o) && <span className="week-mark">{mark(o)}</span>}
-                          {o.orderNumber && <span className="week-ono">#{o.orderNumber}</span>}
-                        </span>
-                        {amounts && <span className={`week-state ${loaded(o) ? '' : 'week-open'}`}>{loaded(o) ? '✓' : t('accounting.notYet')}</span>}
-                      </div>
-                      {linesOf(o).map((l) => {
-                        const p = product(l.productId);
-                        return (
-                          <div key={l.productId} className="week-line">
-                            <span className="week-line-left">
-                              <span className="week-prod">{p?.name ?? '?'}</span>
-                              {!amounts && p?.gramsPerBread ? <span className="week-wt">{p.gramsPerBread} g</span> : null}
-                            </span>
-                            <span className="week-qty">{[l.pallets ? t('office.orderPallets', { pallets: l.pallets }) : '', l.boxes ? `${l.boxes} ${t('pack.boxShort')}` : ''].filter(Boolean).join(' ')}</span>
-                          </div>
-                        );
-                      })}
-                      <div className="week-order-foot">
-                        {!amounts && <span>{t('office.orderPallets', { pallets: palletsOf(o) })} · {kg(weightOf(o).grossKg)}</span>}
-                        {amounts && <span className="week-foot-amount">{a.missing ? t('office.noPriceShort') : money(a.amount)}</span>}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <div className="week-total">
-        <span>
-          {t('accounting.weekTotal')}: {amounts ? money(weekAmount) : `${t('office.orderPallets', { pallets: weekPallets })} · ${kg(weekW.grossKg)}`}
-        </span>
-        <span className="week-total-billers">
-          {billerTotals.map((b) => (
-            <span key={b.brand?.id ?? 'none'}>
-              {b.brand ? billerCode(b.brand) : t('office.noBillerName')} {amounts ? money(b.amount) : t('office.orderPallets', { pallets: b.pallets })}
-            </span>
-          ))}
-          {amounts ? <strong>{money(weekAmount)}</strong> : <strong>{t('accounting.boxesWeight', { kg: kg(weekW.goodsKg) })}{weekW.incomplete ? ' *' : ''}</strong>}
-        </span>
-      </div>
-      {!amounts && weekW.incomplete && <p className="week-note">* {t('accounting.weightMissing')}</p>}
-    </section>
-  );
-}
 
 const pct = (m?: number) => (m === undefined ? '–' : `${(m * 100).toLocaleString('sv-SE', { maximumFractionDigits: 1 })} %`);
 const marginClass = (m?: number) => (m === undefined ? '' : m < 0 ? 'profit-bad' : m < 0.15 ? 'profit-low' : 'profit-ok');

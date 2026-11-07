@@ -5,7 +5,7 @@ import type { Orderbook } from '../domain/orderbook.ts';
 // searched. mode "book" shows the shipping figures (pallets, weight) for the floor; "accounting"
 // shows the prices and the week's total, with no pallets or weight. jsPDF loads only when this runs.
 
-export async function saveOrderbookPdf(ob: Orderbook, filename: string, mode: 'book' | 'accounting' = 'book'): Promise<void> {
+export async function saveOrderbookPdf(ob: Orderbook, filename: string, mode: 'book' | 'accounting' = 'book', action: 'save' | 'print' = 'save'): Promise<void> {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const PW = doc.internal.pageSize.getWidth();
@@ -142,5 +142,11 @@ export async function saveOrderbookPdf(ob: Orderbook, filename: string, mode: 'b
   doc.setFontSize(8);
   doc.text(billers, PW - M, footerY, { align: 'right' });
 
-  doc.save(filename);
+  if (action === 'print') {
+    doc.autoPrint();
+    const w = window.open(doc.output('bloburl'), '_blank');
+    if (!w) doc.save(filename); // a blocked pop-up: fall back to saving
+  } else {
+    doc.save(filename);
+  }
 }
