@@ -97,12 +97,17 @@ export async function saveOrderbookPdf(ob: Orderbook, filename: string, mode: 'b
       y += 3.3;
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
-      for (const l of o.lines) {
+      o.lines.forEach((l, li) => {
         const qty = [l.pallets ? `${l.pallets} pall` : '', l.boxes ? `${l.boxes} kart` : ''].filter(Boolean).join(' ');
         const qtyW = doc.getTextWidth(qty);
         const wt = !accounting && l.grams ? ` ${l.grams} g` : '';
         const nameMax = Math.max(6, colW - qtyW - 2 - (wt ? doc.getTextWidth(wt) : 0));
         const nm = fit(l.name, nameMax);
+        // A faint band behind every other line ties the name to its pallet/price across the gap.
+        if (li % 2 === 1) {
+          doc.setFillColor(236, 236, 232);
+          doc.rect(x0 - 0.6, y - 2.4, colW + 1.2, 3.0, 'F');
+        }
         doc.setTextColor(0);
         doc.text(nm, x0, y);
         if (wt) {
@@ -112,7 +117,7 @@ export async function saveOrderbookPdf(ob: Orderbook, filename: string, mode: 'b
         }
         doc.text(qty, x0 + colW, y, { align: 'right' });
         y += 3.0;
-      }
+      });
       doc.setFontSize(6.6);
       doc.setTextColor(90);
       doc.text(accounting ? kr(o.amount) : `${o.pallets} pall · ${kg(o.grossKg)}`, x0, y);
