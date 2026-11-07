@@ -157,7 +157,7 @@ function Accounting() {
           <button type="button" className="button button-primary" disabled={!rows.length} onClick={download}>
             ⬇ {t('accounting.excel')}
           </button>
-          <button type="button" className="button" disabled={!rows.length} onClick={() => setPrint('full')}>
+          <button type="button" className="button" disabled={!status.orders.length} onClick={() => setPrint('full')}>
             🖨 {t('office.printWeek')}
           </button>
           <button type="button" className="button" disabled={!status.orders.length} onClick={() => setPrint('book')}>
