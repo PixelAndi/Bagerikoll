@@ -2,10 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../app-context.ts';
 import { useCatalog, useEntriesOn } from '../data.ts';
-import { todayLocal } from '../days.ts';
+import { addDays, todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
 import { byProduct, canWorkerUndo, groupByCustomer, sortProducts, total } from '../domain/production.ts';
 import { daySchedule } from '../domain/schedule.ts';
+import { RECENT_DAYS, yieldDays, yieldStats } from '../domain/plan.ts';
 import { lineBoxesPerPallet, palletLayers } from '../domain/pallet.ts';
 import { batchRange, canPack, runCount, runTarget, testPassed, testState } from '../domain/runs.ts';
 import { halfCount, openHalves } from '../domain/halves.ts';
@@ -123,8 +124,21 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
   const schedule = daySchedule(dayOrders, products, today);
   const dayByProduct = byProduct(todays);
   const added = settings.addedProductsDay === today ? settings.addedProducts ?? [] : [];
+  // The day's doughs (from Produktion) and what the bakery can expect them to give, by the yield.
+  const allDoughs = useLiveQuery(() => db.doughs.toArray(), []) ?? [];
+  const sinceYield = addDays(today, -(RECENT_DAYS + 20));
+  const yieldDevs = useLiveQuery(() => db.deviations.where('day').aboveOrEqual(sinceYield).toArray(), [sinceYield]) ?? [];
+  const yieldEntries = useLiveQuery(() => db.entries.where('day').aboveOrEqual(sinceYield).toArray(), [sinceYield]) ?? [];
+  const doughToday = new Map(allDoughs.filter((d) => d.day === today && d.doughs > 0).map((d) => [d.productId, d.doughs]));
+  const expectedOf = (p: Product) => {
+    const n = doughToday.get(p.id);
+    if (!n) return undefined;
+    const stats = yieldStats(p, yieldDays(p, today, allDoughs, yieldDevs, yieldEntries).days);
+    const pallets = n * stats.mean;
+    return { doughs: n, pallets, boxes: p.boxesPerPallet ? pallets * p.boxesPerPallet : undefined };
+  };
   const targetOf = new Map(schedule.map((it) => [it.product.id, it]));
-  const dayItems = [...new Set([...schedule.map((it) => it.product.id), ...[...dayByProduct.keys()].filter((id) => { const d = dayByProduct.get(id); return !!d && (d.pallets > 0 || d.boxes > 0); }), ...added])]
+  const dayItems = [...new Set([...schedule.map((it) => it.product.id), ...doughToday.keys(), ...[...dayByProduct.keys()].filter((id) => { const d = dayByProduct.get(id); return !!d && (d.pallets > 0 || d.boxes > 0); }), ...added])]
     .map((id) => products.find((p) => p.id === id))
     .filter((p): p is Product => !!p && !p.hidden)
     .sort((a, b) => a.name.localeCompare(b.name, 'sv', { numeric: true }));
@@ -294,9 +308,20 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
                   <li key={p.id}>
                     <button type="button" className={`schedule-row ${p.id === run?.productId ? 'on' : ''} ${complete ? 'done' : ''}`} onClick={() => pick(p)}>
                       <span className="schedule-name">
-                        {complete ? '✓ ' : ''}
-                        {p.name}
-                        {p.code && <span className="small muted"> {p.code}</span>}
+                        <span>
+                          {complete ? '✓ ' : ''}
+                          {p.name}
+                          {p.code && <span className="small muted"> {p.code}</span>}
+                        </span>
+                        {(() => {
+                          const ex = expectedOf(p);
+                          return ex ? (
+                            <span className="small muted schedule-expect">
+                              {t('schedule.doughs', { n: ex.doughs })} → {t('schedule.expectPallets', { pallets: Math.round(ex.pallets) })}
+                              {ex.boxes !== undefined ? ` · ${t('schedule.expectBoxes', { boxes: Math.round(ex.boxes) })}` : ''}
+                            </span>
+                          ) : null;
+                        })()}
                       </span>
                       <span className="schedule-amt">
                         <strong>{target}</strong>

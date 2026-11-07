@@ -22,7 +22,7 @@ important numbers big, how things stand in coloured squares and chips, details f
 - **Halva kartonger:** boxes without enough bread are registered, wait in the freezer, and are
   filled with the next production of the product (counted as boxes of that run).
 - **Lägg till / Dra av.** A toggle flips the pallet and box buttons to subtract from the count for a miscount, instead of only undoing the last entry; the count never goes below zero.
-- **Dagens lista.** The managers plan the orders the day before; the station shows only the day's planned products and amounts (summed across orders) so the packers see the whole day, and they choose the order to pack them in. For a mix-up (a product made by mistake) they add any product with "Lägg till produkt".
+- **Dagens lista.** The managers plan the orders the day before; the station shows only the day's planned products and amounts (summed across orders) so the packers see the whole day, and they choose the order to pack them in. Each product also shows how many doughs are made and the pallets and kartonger to expect from them (doughs × the measured yield), so the production figures are right where the packing happens — the manual count stays as a check. For a mix-up (a product made by mistake) they add any product with "Lägg till produkt".
 - **Who is packing can change.** Every name is on the station: the active packers filled,
   the rest outlined. Anyone can tap a name to add or take it off – then "Är du säker?" with
   big Ja/Nej buttons. Several can pack at once; every entry is on all the active packers. The

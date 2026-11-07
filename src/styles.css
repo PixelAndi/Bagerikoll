@@ -2030,3 +2030,6 @@ input[type='checkbox'] {
 .pallet-price { max-width: 90px; }
 .office-pallets td { color: var(--muted); }
 @media print { .office-pallets td { color: #333; } }
+
+.schedule-name { display: flex; flex-direction: column; gap: 2px; }
+.schedule-expect { font-weight: 400; }
