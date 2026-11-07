@@ -70,7 +70,7 @@ function Accounting() {
 
   if (print)
     return (
-      <PrintSheet onBack={() => setPrint(null)}>
+      <PrintSheet onBack={() => setPrint(null)} pdfName={`${print === 'book' ? 'orderbok' : 'ekonomi'}-v${String(week.week).padStart(2, '0')}-${week.year}.pdf`}>
         <h1 className="print-title">{print === 'book' ? `${t('accounting.orderBookTitle')} – ${weekLabel}` : `Ekonomi – ${weekLabel}`}</h1>
         {print === 'full' && <p className="print-status">{status.complete ? t('accounting.complete') : t('accounting.incomplete', { delivered: status.delivered.length, total: status.orders.length })}</p>}
         <WeekSheet monday={monday} orders={orders} products={products} customers={customers} brands={brands} dayName={dayName} amounts={print === 'full'} />

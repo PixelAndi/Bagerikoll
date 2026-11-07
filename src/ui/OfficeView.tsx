@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../app-context.ts';
 import { useCatalog } from '../data.ts';
 import { addDays, isoWeek, mondayOf, todayLocal, type LocalDate } from '../days.ts';
@@ -7,6 +7,7 @@ import { db } from '../db.ts';
 import { accountingSummary, billerCode, duplicateNumbers, orderTotals, planState, priceOn, summaryCsv, type BillerSummary } from '../domain/office.ts';
 import type { Order } from '../domain/types.ts';
 import { Card, Modal, Notice, Page } from './common.tsx';
+import { saveSheetPdf } from '../pdf/sheetPdf.ts';
 import { LoadingDeviations } from './LoadingDeviations.tsx';
 import { ObsRequests } from './ObsRequests.tsx';
 import { OrderBook } from './OrderBook.tsx';
@@ -300,23 +301,40 @@ export function SummaryTable({ biller }: { biller: BillerSummary }) {
 }
 
 /** A page to print: only the sheet, with a way back; the print dialog opens by itself. */
-export function PrintSheet({ onBack, children }: { onBack: () => void; children: ReactNode }) {
+export function PrintSheet({ onBack, children, pdfName }: { onBack: () => void; children: ReactNode; pdfName?: string }) {
   const { t } = useApp();
+  const content = useRef<HTMLDivElement>(null);
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => window.print(), 400);
     return () => clearTimeout(timer);
   }, []);
+  const savePdf = async () => {
+    if (!content.current || !pdfName) return;
+    setSaving(true);
+    try {
+      await saveSheetPdf(content.current, pdfName);
+    } catch {
+      setSaving(false);
+    }
+    setSaving(false);
+  };
   return (
     <main className="page print-sheet">
       <div className="button-row no-print">
         <button type="button" className="button" onClick={onBack}>
           ‹ {t('common.back')}
         </button>
-        <button type="button" className="button button-primary" onClick={() => window.print()}>
+        {pdfName && (
+          <button type="button" className="button button-primary" disabled={saving} onClick={() => void savePdf()}>
+            ⬇ {saving ? t('print.savingPdf') : t('print.savePdf')}
+          </button>
+        )}
+        <button type="button" className="button" onClick={() => window.print()}>
           🖨 {t('protocol.print')}
         </button>
       </div>
-      {children}
+      <div ref={content}>{children}</div>
     </main>
   );
 }
