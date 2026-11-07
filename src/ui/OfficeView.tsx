@@ -9,6 +9,7 @@ import type { Order } from '../domain/types.ts';
 import { Card, Modal, Notice, Page } from './common.tsx';
 import { saveSheetPdf } from '../pdf/sheetPdf.ts';
 import { LoadingDeviations } from './LoadingDeviations.tsx';
+import { WeekExport } from './WeekExport.tsx';
 import { ObsRequests } from './ObsRequests.tsx';
 import { OrderBook } from './OrderBook.tsx';
 import { OrderEditor } from './OrderEditor.tsx';
@@ -138,9 +139,7 @@ function Office() {
           <button type="button" className="button button-primary" onClick={() => setEditing({ newOn: monday <= today && today <= sunday ? today : monday })}>
             + {t('prod.newOrder')}
           </button>
-          <button type="button" className="button" onClick={() => setPrint({ kind: 'week' })}>
-            🖨 {t('office.printWeek')}
-          </button>
+          <WeekExport mode="book" label={t('accounting.orderBookTitle')} orders={orders} products={products} customers={customers} brands={brands} monday={monday} weekLabel={weekLabel} week={week} dayName={dayName} disabled={!orders.length} />
           <a className="button" href="#office-summary">
             {t('office.toSummary')}
           </a>

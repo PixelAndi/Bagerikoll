@@ -6,13 +6,13 @@ import { addDays, isoWeek, mondayOf, todayLocal, type LocalDate } from '../days.
 import { db } from '../db.ts';
 import { accountingRows, deliveredOrders, profitBy, profitOf, weekStatus, type AccountingRow, type Profit } from '../domain/accounting.ts';
 import { accountingWorkbook } from '../domain/accountingSheet.ts';
-import { buildOrderbook, orderbookSheets } from '../domain/orderbook.ts';
 import { accountingSummary, costOn, orderTotals, priceOn } from '../domain/office.ts';
 import type { Product } from '../domain/types.ts';
 import { xlsx } from '../xlsx.ts';
-import { Card, Modal, Notice, Page } from './common.tsx';
+import { Card, Notice, Page } from './common.tsx';
 import { Summary } from './OfficeView.tsx';
 import { OrderBook } from './OrderBook.tsx';
+import { WeekExport } from './WeekExport.tsx';
 import { PriceEditor } from './PriceEditor.tsx';
 
 // Ekonomi (accounting; a device can be set to show only this): a week at a time, in calendar
@@ -41,7 +41,6 @@ function Accounting() {
   const { t, settings } = useApp();
   const today = todayLocal();
   const [monday, setMonday] = useState(mondayOf(addDays(today, -1)));
-  const [print, setPrint] = useState<null | 'full' | 'book'>(null);
   const [pricing, setPricing] = useState<Product | null>(null);
   const { customers, products, brands } = useCatalog();
   const sunday = addDays(monday, 6);
@@ -66,33 +65,6 @@ function Accounting() {
     a.download = `ekonomi-v${String(week.week).padStart(2, '0')}-${week.year}.xlsx`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  };
-
-  // Print or save the week: one generated landscape PDF (or Excel), no on-screen preview.
-  const [busy, setBusy] = useState(false);
-  const fileName = (ext: string) => `${print === 'book' ? 'orderbok' : 'ekonomi'}-v${String(week.week).padStart(2, '0')}-${week.year}.${ext}`;
-  const doExport = async (what: 'print' | 'pdf' | 'xlsx') => {
-    if (!print) return;
-    setBusy(true);
-    try {
-      const mode = print === 'book' ? 'book' : 'accounting';
-      const ob = buildOrderbook(orders, products, customers, brands, monday, weekLabel, dayName, mode);
-      if (what === 'xlsx') {
-        const blob = new Blob([xlsx(orderbookSheets(ob, mode)) as Uint8Array<ArrayBuffer>], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName('xlsx');
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      } else {
-        const { saveOrderbookPdf } = await import('../pdf/orderbookPdf.ts');
-        await saveOrderbookPdf(ob, fileName('pdf'), mode, what === 'print' ? 'print' : 'save');
-      }
-    } catch {
-      // leave the dialog open so they can try again
-    }
-    setBusy(false);
-    if (what !== 'print') setPrint(null);
   };
 
 
@@ -157,12 +129,7 @@ function Accounting() {
           <button type="button" className="button button-primary" disabled={!rows.length} onClick={download}>
             ⬇ {t('accounting.excel')}
           </button>
-          <button type="button" className="button" disabled={!status.orders.length} onClick={() => setPrint('full')}>
-            🖨 {t('office.printWeek')}
-          </button>
-          <button type="button" className="button" disabled={!status.orders.length} onClick={() => setPrint('book')}>
-            🖨 {t('accounting.orderBookTitle')}
-          </button>
+          <WeekExport mode="accounting" label={t('office.printWeek')} orders={orders} products={products} customers={customers} brands={brands} monday={monday} weekLabel={weekLabel} week={week} dayName={dayName} disabled={!status.orders.length} />
         </div>
         {status.complete || !status.orders.length ? null : <p className="small muted">{t('accounting.excelEarly')}</p>}
       </section>
@@ -228,23 +195,6 @@ function Accounting() {
         </ul>
       </section>
       {pricing && <PriceEditor product={pricing} onClose={() => setPricing(null)} />}
-      {print && (
-        <Modal title={`${print === 'book' ? t('accounting.orderBookTitle') : t('nav.accounting')} – ${weekLabel}`} onClose={() => setPrint(null)}>
-          <p className="small muted">{t('export.hint')}</p>
-          <div className="export-choices">
-            <button type="button" className="button button-primary" disabled={busy} onClick={() => void doExport('print')}>
-              🖨 {t('export.print')}
-            </button>
-            <button type="button" className="button" disabled={busy} onClick={() => void doExport('pdf')}>
-              ⬇ {t('print.savePdf')}
-            </button>
-            <button type="button" className="button" disabled={busy} onClick={() => void doExport('xlsx')}>
-              ⬇ {t('print.saveExcel')}
-            </button>
-          </div>
-          {busy && <p className="small muted">{t('export.working')}</p>}
-        </Modal>
-      )}
     </Page>
   );
 }
