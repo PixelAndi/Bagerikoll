@@ -86,6 +86,17 @@ describe('prices per customer', () => {
     const s = accountingSummary(orders, [p], customers, brands, '2030-02-10', '2030-02-10');
     expect(s.map((b) => b.amount)).toEqual([900, 1100]);
   });
+  it('bills the pallets for a customer who buys them', () => {
+    const buyer: Customer[] = [{ id: 'k1', name: 'Kund Ett', billedBy: 'b1', buysPallets: true, palletPrice: 150 }];
+    // 2 whole pallets + 4 loose boxes = 3 pallets × 150 = 450 kr on top of the goods
+    const orders = [order('2030-02-10', 'k1', [{ productId: 'p', pallets: 2, boxes: 0 }, { productId: 'p', pallets: 0, boxes: 4 }])];
+    const s = accountingSummary(orders, [p], buyer, brands, '2030-02-10', '2030-02-10');
+    const c = s[0].customers[0];
+    expect(c.palletCount).toBe(3);
+    expect(c.palletAmount).toBe(450);
+    expect(s[0].palletAmount).toBe(450);
+    expect(s[0].amount).toBe(c.amount + 450);
+  });
 });
 
 describe('the weekly summary for accounting', () => {

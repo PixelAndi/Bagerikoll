@@ -31,6 +31,9 @@ export interface Settings {
   runId?: string;
   /** The session running at this station. */
   sessionId?: string;
+  /** Products the packers added by hand at the station (for a mix-up), and the day they were added. */
+  addedProducts?: string[];
+  addedProductsDay?: string;
 }
 
 const KEY = 'bagerikoll-settings';

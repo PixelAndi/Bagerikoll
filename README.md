@@ -22,7 +22,7 @@ important numbers big, how things stand in coloured squares and chips, details f
 - **Halva kartonger:** boxes without enough bread are registered, wait in the freezer, and are
   filled with the next production of the product (counted as boxes of that run).
 - **Lägg till / Dra av.** A toggle flips the pallet and box buttons to subtract from the count for a miscount, instead of only undoing the last entry; the count never goes below zero.
-- **Dagens lista.** The managers plan the orders the day before; the station shows the day's planned products and amounts (summed across orders) so the packers see the whole day, and they choose the order to pack them in.
+- **Dagens lista.** The managers plan the orders the day before; the station shows only the day's planned products and amounts (summed across orders) so the packers see the whole day, and they choose the order to pack them in. For a mix-up (a product made by mistake) they add any product with "Lägg till produkt".
 - **Who is packing can change.** Every name is on the station: the active packers filled,
   the rest outlined. Anyone can tap a name to add or take it off – then "Är du säker?" with
   big Ja/Nej buttons. Several can pack at once; every entry is on all the active packers. The
@@ -116,7 +116,7 @@ line's amount, Ändra and Flytta.
 
 ## Ekonomi (accounting)
 
-**Skriv ut** prints the week as day columns, black on white, thin rules, no fills, A4 landscape, for minimal ink. Two options: **Skriv ut veckan** (delivered quantities, amounts, day/week totals and the invoice basis per billing company) and **Orderbok** (just the orders — ordered quantities, no prices; the bread weight shown apart from the name, long names truncated, and shipping weights per order/day/week: gross incl. the pallet, and the boxes without the pallet, for booking in Nshift). The weight comes from two product fields (grams per bread, breads per box) set in Admin. A customer marked **PÖS** (pallet transfer) ships its loose boxes on their own pallet, so they count as a pallet for the weight.
+**Skriv ut** prints the week as day columns, black on white, thin rules, no fills, A4 landscape, for minimal ink. Two options: **Skriv ut veckan** (delivered quantities, amounts, day/week totals and the invoice basis per billing company) and **Orderbok** (just the orders — ordered quantities, no prices; the bread weight shown apart from the name, long names truncated, and shipping weights per order/day/week: gross incl. the pallet, and the boxes without the pallet, for booking in Nshift). The weight comes from two product fields (grams per bread, breads per box) set in Admin. A customer marked **PÖS** (pallet transfer) ships its loose boxes on their own pallet, so they count as a pallet for the weight. A customer that **buys the pallets** is billed per pallet (a Pallar line in the invoice basis).
 
 
 - **A week at a time, in calendar order.** At the top: whether the week is **complete** – every

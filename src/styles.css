@@ -2024,3 +2024,9 @@ input[type='checkbox'] {
 .schedule-row.done { border-color: var(--cal-worked-strong); background: var(--cal-worked); }
 .schedule-name { font-weight: 700; min-width: 0; }
 .schedule-amt { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; white-space: nowrap; }
+
+.pack-add-product { width: 100%; margin-top: 8px; border-style: dashed; }
+
+.pallet-price { max-width: 90px; }
+.office-pallets td { color: var(--muted); }
+@media print { .office-pallets td { color: #333; } }

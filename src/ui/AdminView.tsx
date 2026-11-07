@@ -146,6 +146,12 @@ function Customers() {
             <label className="check-inline" title={t('admin.palletTransferHint')}>
               <input type="checkbox" checked={!!c.palletTransfer} onChange={(e) => void db.customers.update(c.id, { palletTransfer: e.target.checked || undefined })} /> {t('admin.palletTransfer')}
             </label>
+            <label className="check-inline" title={t('admin.buysPalletsHint')}>
+              <input type="checkbox" checked={!!c.buysPallets} onChange={(e) => void db.customers.update(c.id, { buysPallets: e.target.checked || undefined, palletPrice: e.target.checked ? c.palletPrice : undefined })} /> {t('admin.buysPallets')}
+            </label>
+            {c.buysPallets && (
+              <input type="text" inputMode="numeric" className="pallet-price" defaultValue={c.palletPrice ?? ''} placeholder={t('admin.palletPrice')} aria-label={t('admin.palletPrice')} onBlur={(e) => void db.customers.update(c.id, { palletPrice: Number(e.target.value.replace(',', '.')) || undefined })} />
+            )}
             <button type="button" className="link-button small" onClick={() => void db.customers.update(c.id, { hidden: !c.hidden })}>
               {c.hidden ? t('admin.show') : t('admin.hide')}
             </button>

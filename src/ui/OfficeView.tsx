@@ -276,10 +276,19 @@ export function SummaryTable({ biller }: { biller: BillerSummary }) {
                 <td className="num">{r.amount === undefined ? <span className="proto-bad">{t('office.noPriceShort')}</span> : money(r.amount)}</td>
               </tr>
             )),
+            ...(c.palletAmount
+              ? [
+                  <tr key={`${c.customerId}-pallets`} className="office-pallets">
+                    <td />
+                    <td colSpan={3}>{t('office.palletsSold', { n: c.palletCount ?? 0 })}</td>
+                    <td className="num">{money(c.palletAmount)}</td>
+                  </tr>,
+                ]
+              : []),
             <tr key={`${c.customerId}-sum`} className="office-subtotal">
               <td colSpan={4}>{t('office.customerTotal', { customer: c.customer?.name ?? '?', orders: t(c.orders === 1 ? 'office.dayCountOne' : 'office.dayCount', { n: c.orders }) })}</td>
               <td className="num">
-                <strong>{money(c.amount)}</strong>
+                <strong>{money(c.amount + (c.palletAmount ?? 0))}</strong>
                 {c.missingPrice && ' *'}
               </td>
             </tr>,

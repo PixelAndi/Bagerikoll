@@ -69,14 +69,14 @@ export function demoData(today: LocalDate, now: number, at: (day: LocalDate, hh:
     { id: id('b', 'st'), name: 'Surdegshuset Test AB', code: 'ST', color: '#b5651d', updatedAt: stamp },
   ];
   const [BE, ST] = brands.map((b) => b.id);
-  const C = (key: string, name: string, billedBy: string, palletTransfer = false): Customer => ({ id: id('c', key), name, billedBy, palletTransfer: palletTransfer || undefined, updatedAt: stamp });
+  const C = (key: string, name: string, billedBy: string, palletTransfer = false, buysPrice?: number): Customer => ({ id: id('c', key), name, billedBy, palletTransfer: palletTransfer || undefined, buysPallets: buysPrice ? true : undefined, palletPrice: buysPrice, updatedAt: stamp });
   const customers: Customer[] = [
     C('gn', 'Grossist Nord', ST),
     C('gs', 'Grossist Syd', ST),
     C('gv', 'Grossist Väst', ST, true), // pallet transfer (PÖS): loose boxes ship on their own pallet
     C('lk', 'Livskedjan', ST),
     C('ck', 'Cafékedjan', BE),
-    C('ss', 'Storkök Service', BE),
+    C('ss', 'Storkök Service', BE, false, 180), // buys the pallets we send – billed per pallet
     C('hg', 'Hotellgruppen', BE),
     C('rs', 'Restaurang Söder', BE),
   ];

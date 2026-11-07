@@ -117,6 +117,10 @@ export interface CustomerSummary {
   amount: number;
   /** Some lines had no price: the amount is too low by those. */
   missingPrice: boolean;
+  /** Pallets we send (billed when the customer buys them): whole pallets + one for loose boxes. */
+  palletCount?: number;
+  /** What those pallets come to (palletCount × the customer's pallet price). */
+  palletAmount?: number;
 }
 
 export interface BillerSummary {
@@ -124,6 +128,9 @@ export interface BillerSummary {
   brand?: Brand;
   customers: CustomerSummary[];
   amount: number;
+  /** Pallets billed (customers who buy them) and what they come to. */
+  palletCount?: number;
+  palletAmount?: number;
   /** Pallets and boxes ordered from it (as the paper order book sums them up each week). */
   pallets: number;
   boxes: number;
@@ -154,6 +161,11 @@ export function accountingSummary(orders: Order[], products: Product[], customer
       byCustomer.set(o.customerId, c);
     }
     c.orders++;
+    if (c.customer?.buysPallets) {
+      const whole = o.lines.reduce((t, l) => t + l.pallets, 0);
+      const loose = o.lines.reduce((t, l) => t + l.boxes, 0);
+      c.palletCount = (c.palletCount ?? 0) + whole + (loose > 0 ? 1 : 0);
+    }
     for (const l of o.lines) {
       if (!l.pallets && !l.boxes) continue;
       const product = products.find((p) => p.id === l.productId);
@@ -180,16 +192,23 @@ export function accountingSummary(orders: Order[], products: Product[], customer
     const list = [...byCustomer.values()]
       .filter((c) => (brand ? c.customer?.billedBy === brand.id : !c.customer?.billedBy || !known.has(c.customer.billedBy)))
       .sort((a, b) => (a.customer?.name ?? '').localeCompare(b.customer?.name ?? '', 'sv'));
-    for (const c of list) c.rows.sort((a, b) => (a.product?.name ?? '').localeCompare(b.product?.name ?? '', 'sv', { numeric: true }));
-    if (list.length)
+    for (const c of list) {
+      c.rows.sort((a, b) => (a.product?.name ?? '').localeCompare(b.product?.name ?? '', 'sv', { numeric: true }));
+      if (c.customer?.buysPallets && c.customer.palletPrice && c.palletCount) c.palletAmount = round2(c.palletCount * c.customer.palletPrice);
+    }
+    if (list.length) {
+      const palletAmount = round2(list.reduce((s, c) => s + (c.palletAmount ?? 0), 0));
       out.push({
         brand,
         customers: list,
-        amount: round2(list.reduce((s, c) => s + c.amount, 0)),
+        amount: round2(list.reduce((s, c) => s + c.amount + (c.palletAmount ?? 0), 0)),
         pallets: list.reduce((s, c) => s + c.rows.reduce((t, r) => t + r.pallets, 0), 0),
         boxes: list.reduce((s, c) => s + c.rows.reduce((t, r) => t + r.boxes, 0), 0),
         missingPrice: list.some((c) => c.missingPrice),
+        palletCount: list.reduce((s, c) => s + (c.palletCount ?? 0), 0) || undefined,
+        palletAmount: palletAmount || undefined,
       });
+    }
   }
   for (const b of out) for (const c of b.customers) c.amount = round2(c.amount);
   return out;

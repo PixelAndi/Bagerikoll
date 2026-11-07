@@ -34,6 +34,10 @@ export interface Customer {
   billedBy?: string;
   /** Pallet transfer (PÖS): loose boxes ship on their own pallet, so they count as a pallet for the shipping weight. */
   palletTransfer?: boolean;
+  /** This customer buys the pallets we send (no exchange) – accounting bills them per pallet. */
+  buysPallets?: boolean;
+  /** Price per pallet (kr excl. VAT) when the customer buys the pallets. */
+  palletPrice?: number;
   hidden?: boolean;
   updatedAt?: number;
 }

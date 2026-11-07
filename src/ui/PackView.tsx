@@ -102,6 +102,7 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
   const [starting, setStarting] = useState<Product | null>(null);
   const [ending, setEnding] = useState<{ then?: Product } | null>(null);
   const [reporting, setReporting] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [palletPause, setPalletPause] = useState(false);
   // "Dra av" mode: the pallet and box buttons take away from the count instead of adding.
   const [subtracting, setSubtracting] = useState(false);
@@ -121,6 +122,16 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
   const dayOrders = useLiveQuery(() => db.orders.where('day').equals(today).toArray(), [today]) ?? [];
   const schedule = daySchedule(dayOrders, products, today);
   const dayByProduct = byProduct(todays);
+  const added = settings.addedProductsDay === today ? settings.addedProducts ?? [] : [];
+  const targetOf = new Map(schedule.map((it) => [it.product.id, it]));
+  const dayItems = [...new Set([...schedule.map((it) => it.product.id), ...[...dayByProduct.keys()].filter((id) => { const d = dayByProduct.get(id); return !!d && (d.pallets > 0 || d.boxes > 0); }), ...added])]
+    .map((id) => products.find((p) => p.id === id))
+    .filter((p): p is Product => !!p && !p.hidden)
+    .sort((a, b) => a.name.localeCompare(b.name, 'sv', { numeric: true }));
+  const addProduct = (p: Product) => {
+    if (!added.includes(p.id)) save({ addedProductsDay: today, addedProducts: [...added, p.id] });
+    setAdding(false);
+  };
   const sessionTotal = total(mine);
   const dayTotal = total(todays);
   const last = [...mine].sort((a, b) => b.at - a.at);
@@ -265,61 +276,41 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
           </div>
         )}
 
-        {schedule.length > 0 && (
-          <section className="card pack-schedule">
-            <div className="cal-focus-head">
-              <strong>{t('schedule.title')}</strong>
-              <span className="small muted">{t('schedule.hint')}</span>
-            </div>
+        <section className="card pack-schedule">
+          <div className="cal-focus-head">
+            <strong>{t('schedule.title')}</strong>
+            <span className="small muted">{t('schedule.hint')}</span>
+          </div>
+          {dayItems.length === 0 ? (
+            <p className="small muted">{t('schedule.empty')}</p>
+          ) : (
             <ul className="schedule-list">
-              {schedule.map((it) => {
-                const done = dayByProduct.get(it.product.id) ?? { pallets: 0, boxes: 0 };
-                const target = `${it.pallets ? t('office.orderPallets', { pallets: it.pallets }) : ''}${it.pallets && it.boxes ? ' ' : ''}${it.boxes ? `${it.boxes} ${t('pack.boxShort')}` : ''}`;
-                const complete = done.pallets >= it.pallets && done.boxes >= it.boxes;
+              {dayItems.map((p) => {
+                const it = targetOf.get(p.id);
+                const done = dayByProduct.get(p.id) ?? { pallets: 0, boxes: 0 };
+                const target = it ? `${it.pallets ? t('office.orderPallets', { pallets: it.pallets }) : ''}${it.pallets && it.boxes ? ' ' : ''}${it.boxes ? `${it.boxes} ${t('pack.boxShort')}` : ''}` : t('schedule.added');
+                const complete = !!it && done.pallets >= it.pallets && done.boxes >= it.boxes;
                 return (
-                  <li key={it.product.id}>
-                    <button type="button" className={`schedule-row ${it.product.id === run?.productId ? 'on' : ''} ${complete ? 'done' : ''}`} onClick={() => pick(it.product)}>
+                  <li key={p.id}>
+                    <button type="button" className={`schedule-row ${p.id === run?.productId ? 'on' : ''} ${complete ? 'done' : ''}`} onClick={() => pick(p)}>
                       <span className="schedule-name">
                         {complete ? '✓ ' : ''}
-                        {it.product.name}
-                        {it.product.code && <span className="small muted"> {it.product.code}</span>}
+                        {p.name}
+                        {p.code && <span className="small muted"> {p.code}</span>}
                       </span>
                       <span className="schedule-amt">
                         <strong>{target}</strong>
-                        {(done.pallets || done.boxes) ? <span className="small muted">{t('schedule.packed', { pallets: done.pallets, boxes: done.boxes })}</span> : null}
+                        {done.pallets || done.boxes ? <span className="small muted">{t('schedule.packed', { pallets: done.pallets, boxes: done.boxes })}</span> : null}
                       </span>
                     </button>
                   </li>
                 );
               })}
             </ul>
-          </section>
-        )}
-
-        <section className="card pack-choose">
-          <h2 className="card-title">{run ? t('run.changeProduct') : t('run.which')}</h2>
-          {byCustomer && (
-            <div className="cal-chips pack-brands" role="group" aria-label={t('pack.customer')}>
-              <button type="button" className={`cal-chip ${!filter ? 'pack-chip-on' : ''}`} onClick={() => setFilter(undefined)}>
-                {t('pack.allBrands')}
-              </button>
-              {shownCustomers.map((c) => (
-                <button key={c.id} type="button" className={`cal-chip ${filter === c.id ? 'pack-chip-on' : ''}`} onClick={() => setFilter(c.id)}>
-                  {c.name}
-                </button>
-              ))}
-            </div>
           )}
-          {groups.map((g, i) => (
-            <div key={g.customer?.id ?? `none-${i}`}>
-              {byCustomer && <h3 className="pack-group">{g.customer?.name ?? t('pack.noCustomer')}</h3>}
-              <div className="pack-products">
-                {g.products.map((p) => (
-                  <ProductTile key={p.id} product={p} on={p.id === run?.productId} count={perProduct.get(p.id)} onPick={() => pick(p)} />
-                ))}
-              </div>
-            </div>
-          ))}
+          <button type="button" className="button pack-add-product" onClick={() => setAdding(true)}>
+            + {t('schedule.add')}
+          </button>
         </section>
 
         <section className="card">
@@ -367,6 +358,33 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
         />
       )}
       {halfPad && product && <QuantityPad kind="box" product={product} title={t('half.title')} hint={t('half.hint')} unit={t('half.word')} onClose={() => setHalfPad(false)} onDone={(n) => void addHalves(n)} />}
+      {adding && (
+        <Modal title={t('schedule.addTitle')} onClose={() => setAdding(false)}>
+          <p className="small muted">{t('schedule.addHint')}</p>
+          {byCustomer && (
+            <div className="cal-chips pack-brands" role="group" aria-label={t('pack.customer')}>
+              <button type="button" className={`cal-chip ${!filter ? 'pack-chip-on' : ''}`} onClick={() => setFilter(undefined)}>
+                {t('pack.allBrands')}
+              </button>
+              {shownCustomers.map((c) => (
+                <button key={c.id} type="button" className={`cal-chip ${filter === c.id ? 'pack-chip-on' : ''}`} onClick={() => setFilter(c.id)}>
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {groups.map((g, i) => (
+            <div key={g.customer?.id ?? `none-${i}`}>
+              {byCustomer && <h3 className="pack-group">{g.customer?.name ?? t('pack.noCustomer')}</h3>}
+              <div className="pack-products">
+                {g.products.map((p) => (
+                  <ProductTile key={p.id} product={p} on={dayItems.some((x) => x.id === p.id)} count={perProduct.get(p.id)} onPick={() => addProduct(p)} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </Modal>
+      )}
       {starting && <StartRun product={starting} onClose={() => setStarting(null)} />}
       {ending && run && product && (
         <EndRun
