@@ -6,6 +6,7 @@ import { addDays, isoWeek, mondayOf, todayLocal, type LocalDate } from '../days.
 import { db } from '../db.ts';
 import { accountingRows, deliveredLines, deliveredOrders, profitBy, profitOf, weekStatus, type AccountingRow, type Profit } from '../domain/accounting.ts';
 import { accountingWorkbook } from '../domain/accountingSheet.ts';
+import { buildOrderbook, orderbookSheets } from '../domain/orderbook.ts';
 import { linesWeight, sumWeights } from '../domain/weight.ts';
 import { accountingSummary, billerCode, costOn, lineCalc, orderTotals, priceOn } from '../domain/office.ts';
 import type { Brand, Customer, Order, Product } from '../domain/types.ts';
@@ -70,7 +71,31 @@ function Accounting() {
 
   if (print)
     return (
-      <PrintSheet onBack={() => setPrint(null)} pdfName={`${print === 'book' ? 'orderbok' : 'ekonomi'}-v${String(week.week).padStart(2, '0')}-${week.year}.pdf`}>
+      <PrintSheet
+        onBack={() => setPrint(null)}
+        pdfName={print === 'full' ? `ekonomi-v${String(week.week).padStart(2, '0')}-${week.year}.pdf` : undefined}
+        onPdf={
+          print === 'book'
+            ? async () => {
+                const { saveOrderbookPdf } = await import('../pdf/orderbookPdf.ts');
+                await saveOrderbookPdf(buildOrderbook(orders, products, customers, brands, monday, weekLabel, dayName), `orderbok-v${String(week.week).padStart(2, '0')}-${week.year}.pdf`);
+              }
+            : undefined
+        }
+        onXlsx={
+          print === 'book'
+            ? async () => {
+                const sheets = orderbookSheets(buildOrderbook(orders, products, customers, brands, monday, weekLabel, dayName));
+                const blob = new Blob([xlsx(sheets) as Uint8Array<ArrayBuffer>], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `orderbok-v${String(week.week).padStart(2, '0')}-${week.year}.xlsx`;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+              }
+            : undefined
+        }
+      >
         <h1 className="print-title">{print === 'book' ? `${t('accounting.orderBookTitle')} – ${weekLabel}` : `Ekonomi – ${weekLabel}`}</h1>
         {print === 'full' && <p className="print-status">{status.complete ? t('accounting.complete') : t('accounting.incomplete', { delivered: status.delivered.length, total: status.orders.length })}</p>}
         <WeekSheet monday={monday} orders={orders} products={products} customers={customers} brands={brands} dayName={dayName} amounts={print === 'full'} />

@@ -301,7 +301,7 @@ export function SummaryTable({ biller }: { biller: BillerSummary }) {
 }
 
 /** A page to print: only the sheet, with a way back; the print dialog opens by itself. */
-export function PrintSheet({ onBack, children, pdfName }: { onBack: () => void; children: ReactNode; pdfName?: string }) {
+export function PrintSheet({ onBack, children, pdfName, onPdf, onXlsx }: { onBack: () => void; children: ReactNode; pdfName?: string; onPdf?: () => Promise<void>; onXlsx?: () => Promise<void> }) {
   const { t } = useApp();
   const content = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
@@ -309,25 +309,36 @@ export function PrintSheet({ onBack, children, pdfName }: { onBack: () => void; 
     const timer = setTimeout(() => window.print(), 400);
     return () => clearTimeout(timer);
   }, []);
-  const savePdf = async () => {
-    if (!content.current || !pdfName) return;
+  const run = async (fn: () => Promise<void>) => {
     setSaving(true);
     try {
-      await saveSheetPdf(content.current, pdfName);
+      await fn();
     } catch {
-      setSaving(false);
+      // leave the buttons usable again
     }
     setSaving(false);
   };
+  const savePdf = () =>
+    run(
+      onPdf ??
+        (async () => {
+          if (content.current && pdfName) await saveSheetPdf(content.current, pdfName);
+        }),
+    );
   return (
     <main className="page print-sheet">
       <div className="button-row no-print">
         <button type="button" className="button" onClick={onBack}>
           ‹ {t('common.back')}
         </button>
-        {pdfName && (
+        {(pdfName || onPdf) && (
           <button type="button" className="button button-primary" disabled={saving} onClick={() => void savePdf()}>
             ⬇ {saving ? t('print.savingPdf') : t('print.savePdf')}
+          </button>
+        )}
+        {onXlsx && (
+          <button type="button" className="button" disabled={saving} onClick={() => void run(onXlsx)}>
+            ⬇ {t('print.saveExcel')}
           </button>
         )}
         <button type="button" className="button" onClick={() => window.print()}>
