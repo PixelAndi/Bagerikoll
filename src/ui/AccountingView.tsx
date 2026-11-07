@@ -6,7 +6,7 @@ import { addDays, isoWeek, mondayOf, todayLocal, type LocalDate } from '../days.
 import { db } from '../db.ts';
 import { accountingRows, deliveredLines, deliveredOrders, profitBy, profitOf, weekStatus, type AccountingRow, type Profit } from '../domain/accounting.ts';
 import { accountingWorkbook } from '../domain/accountingSheet.ts';
-import { linesWeight, ordersWeight } from '../domain/weight.ts';
+import { linesWeight, sumWeights } from '../domain/weight.ts';
 import { accountingSummary, billerCode, costOn, lineCalc, orderTotals, priceOn } from '../domain/office.ts';
 import type { Brand, Customer, Order, Product } from '../domain/types.ts';
 import { xlsx } from '../xlsx.ts';
@@ -259,10 +259,13 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
     return b ? billerCode(b) : '';
   };
   const kg = (n: number) => `${n.toLocaleString('sv-SE', { maximumFractionDigits: 1 })} kg`;
-  const weightOf = (o: Order) => linesWeight(linesOf(o), product);
-  const weekW = ordersWeight(live.map((o) => ({ lines: linesOf(o) })), product);
+  const pos = (o: Order) => !!customers.find((c) => c.id === o.customerId)?.palletTransfer;
+  const weightOf = (o: Order) => linesWeight(linesOf(o), product, { looseOnPallet: pos(o) });
+  // The order book is for shipping, so it counts the real (shipping) pallets, PÖS included.
+  const palletsOf = (o: Order) => (amounts ? orderPallets(o) : weightOf(o).pallets);
+  const weekW = sumWeights(live.map(weightOf));
   const weekAmount = live.reduce((s, o) => s + orderAmount(o).amount, 0);
-  const weekPallets = live.reduce((s, o) => s + orderPallets(o), 0);
+  const weekPallets = live.reduce((s, o) => s + palletsOf(o), 0);
   // Split the week by billing company over the same orders as the totals (not delivered-only), so it reconciles.
   const billerMap = new Map<string, { brand?: Brand; amount: number }>();
   for (const o of live) {
@@ -275,7 +278,7 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
   const billerPallets = new Map<string, number>();
   for (const o of live) {
     const brand = brands.find((x) => x.id === customers.find((c) => c.id === o.customerId)?.billedBy);
-    billerPallets.set(brand?.id ?? 'none', (billerPallets.get(brand?.id ?? 'none') ?? 0) + orderPallets(o));
+    billerPallets.set(brand?.id ?? 'none', (billerPallets.get(brand?.id ?? 'none') ?? 0) + palletsOf(o));
   }
   const billerTotals = [...billerMap.values()].map((b) => ({ ...b, pallets: billerPallets.get(b.brand?.id ?? 'none') ?? 0 })).sort((a, b) => (a.brand?.name ?? 'ÿ').localeCompare(b.brand?.name ?? 'ÿ', 'sv'));
 
@@ -284,9 +287,9 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
       <div className="week-cols" style={{ ['--cols' as string]: String(days.length) }}>
         {days.map((d) => {
           const list = byDay(d);
-          const pallets = list.reduce((s, o) => s + orderPallets(o), 0);
+          const pallets = list.reduce((s, o) => s + palletsOf(o), 0);
           const amount = list.reduce((s, o) => s + orderAmount(o).amount, 0);
-          const dayW = ordersWeight(list.map((o) => ({ lines: linesOf(o) })), product);
+          const dayW = sumWeights(list.map(weightOf));
           return (
             <div key={d} className="week-day">
               <div className="week-day-head">
@@ -321,7 +324,7 @@ function WeekSheet({ monday, orders, products, customers, brands, dayName, amoun
                         );
                       })}
                       <div className="week-order-foot">
-                        <span>{t('office.orderPallets', { pallets: orderPallets(o) })}{!amounts ? ` · ${kg(weightOf(o).grossKg)}` : ''}</span>
+                        <span>{t('office.orderPallets', { pallets: palletsOf(o) })}{!amounts ? ` · ${kg(weightOf(o).grossKg)}` : ''}</span>
                         {amounts && <span>{a.missing ? t('office.noPriceShort') : money(a.amount)}</span>}
                       </div>
                     </div>

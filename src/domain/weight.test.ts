@@ -24,6 +24,15 @@ describe('shipping weight', () => {
     expect(w.grossKg).toBeCloseTo(112.7 + PALLET_TARE_KG);
     expect(w.incomplete).toBe(false);
   });
+  it('pallet transfer: loose boxes count as a pallet for the tare', () => {
+    // 4 loose boxes of Ostfralla, PÖS → one pallet's tare on top
+    const plain = linesWeight([line('ost', 0, 4)], prod);
+    expect(plain.pallets).toBe(0);
+    expect(plain.grossKg).toBeCloseTo(plain.goodsKg);
+    const pos = linesWeight([line('ost', 0, 4)], prod, { looseOnPallet: true });
+    expect(pos.pallets).toBe(1);
+    expect(pos.grossKg).toBeCloseTo(pos.goodsKg + PALLET_TARE_KG);
+  });
   it('sums several orders and flags a missing weight', () => {
     const w = ordersWeight([{ lines: [line('kal', 2)] }, { lines: [line('nope', 1)] }], prod);
     // kal: 2×20×5.4 = 216 kg net; nope has no weight → incomplete, not added

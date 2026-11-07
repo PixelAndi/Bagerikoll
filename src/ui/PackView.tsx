@@ -5,6 +5,7 @@ import { useCatalog, useEntriesOn } from '../data.ts';
 import { todayLocal } from '../days.ts';
 import { db, newId } from '../db.ts';
 import { byProduct, canWorkerUndo, groupByCustomer, sortProducts, total } from '../domain/production.ts';
+import { daySchedule } from '../domain/schedule.ts';
 import { lineBoxesPerPallet, palletLayers } from '../domain/pallet.ts';
 import { batchRange, canPack, runCount, runTarget, testPassed, testState } from '../domain/runs.ts';
 import { halfCount, openHalves } from '../domain/halves.ts';
@@ -116,6 +117,10 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
   const groups = byCustomer ? groupByCustomer(products, customers, filter) : [{ products: sortProducts(products) }];
   const product = run ? products.find((p) => p.id === run.productId) : undefined;
   const perProduct = byProduct(mine);
+  // Today's planned products (the managers planned the orders the day before) and what's packed so far.
+  const dayOrders = useLiveQuery(() => db.orders.where('day').equals(today).toArray(), [today]) ?? [];
+  const schedule = daySchedule(dayOrders, products, today);
+  const dayByProduct = byProduct(todays);
   const sessionTotal = total(mine);
   const dayTotal = total(todays);
   const last = [...mine].sort((a, b) => b.at - a.at);
@@ -258,6 +263,37 @@ function Packing({ sessionId, workerIds, throwerIds }: { sessionId: string; work
               {t('run.end')}
             </button>
           </div>
+        )}
+
+        {schedule.length > 0 && (
+          <section className="card pack-schedule">
+            <div className="cal-focus-head">
+              <strong>{t('schedule.title')}</strong>
+              <span className="small muted">{t('schedule.hint')}</span>
+            </div>
+            <ul className="schedule-list">
+              {schedule.map((it) => {
+                const done = dayByProduct.get(it.product.id) ?? { pallets: 0, boxes: 0 };
+                const target = `${it.pallets ? t('office.orderPallets', { pallets: it.pallets }) : ''}${it.pallets && it.boxes ? ' ' : ''}${it.boxes ? `${it.boxes} ${t('pack.boxShort')}` : ''}`;
+                const complete = done.pallets >= it.pallets && done.boxes >= it.boxes;
+                return (
+                  <li key={it.product.id}>
+                    <button type="button" className={`schedule-row ${it.product.id === run?.productId ? 'on' : ''} ${complete ? 'done' : ''}`} onClick={() => pick(it.product)}>
+                      <span className="schedule-name">
+                        {complete ? '✓ ' : ''}
+                        {it.product.name}
+                        {it.product.code && <span className="small muted"> {it.product.code}</span>}
+                      </span>
+                      <span className="schedule-amt">
+                        <strong>{target}</strong>
+                        {(done.pallets || done.boxes) ? <span className="small muted">{t('schedule.packed', { pallets: done.pallets, boxes: done.boxes })}</span> : null}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         )}
 
         <section className="card pack-choose">

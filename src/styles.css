@@ -2012,3 +2012,15 @@ input[type='checkbox'] {
 .pack-mode-sub.on { border-color: var(--cal-missing-strong); background: var(--cal-missing-strong); }
 .pack-subtracting .pack-pallet:not(.pack-pausing), .pack-subtracting .pack-box { background: var(--cal-missing-strong); }
 .pack-last-sub { border-color: var(--cal-missing-strong); }
+
+.check-inline { display: inline-flex; align-items: center; gap: 4px; font-size: 0.85rem; white-space: nowrap; }
+.check-inline input { width: 18px; height: 18px; }
+
+/* Dagens lista: the day's planned products at the packing station. */
+.pack-schedule .cal-focus-head { margin-bottom: 6px; }
+.schedule-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.schedule-row { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; border: 2px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.schedule-row.on { border-color: var(--primary); background: var(--primary-soft); }
+.schedule-row.done { border-color: var(--cal-worked-strong); background: var(--cal-worked); }
+.schedule-name { font-weight: 700; min-width: 0; }
+.schedule-amt { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; white-space: nowrap; }

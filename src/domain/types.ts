@@ -32,6 +32,8 @@ export interface Customer {
   name: string;
   /** The brand (company) that bills this customer. */
   billedBy?: string;
+  /** Pallet transfer (PÖS): loose boxes ship on their own pallet, so they count as a pallet for the shipping weight. */
+  palletTransfer?: boolean;
   hidden?: boolean;
   updatedAt?: number;
 }
@@ -51,7 +53,7 @@ export interface Product {
   boxesPerLayer?: number;
   /** Weight of one bread in grams (kept apart from the name) – for the shipping weight (Nshift). */
   gramsPerBread?: number;
-  /** Breads in one box, e.g. 90 (most Dagab 60g) or 70 (Ostfralla 70g) – with gramsPerBread gives a box's goods weight. */
+  /** Breads in one box, e.g. 90 for light bread or fewer for heavier – with gramsPerBread gives a box's goods weight. */
   breadsPerBox?: number;
   /** A manager has blocked urgent production (OBS) of this product (it needs more people than an early shift has). */
   obsBlocked?: boolean;

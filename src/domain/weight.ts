@@ -25,7 +25,7 @@ export interface Weight {
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
 /** The weight of a set of order lines. */
-export function linesWeight(lines: OrderLine[], product: (id: string) => Product | undefined): Weight {
+export function linesWeight(lines: OrderLine[], product: (id: string) => Product | undefined, opts: { looseOnPallet?: boolean } = {}): Weight {
   let goods = 0;
   let pallets = 0;
   let boxes = 0;
@@ -41,8 +41,15 @@ export function linesWeight(lines: OrderLine[], product: (id: string) => Product
     if (w === undefined || (l.pallets && !bpp)) incomplete = true;
     else goods += totalBoxes * w;
   }
+  // Pallet transfer (PÖS): the order's loose boxes ship on their own pallet, counted for the tare.
+  const looseBoxes = lines.reduce((s, l) => s + l.boxes, 0);
+  if (opts.looseOnPallet && looseBoxes > 0) pallets += 1;
   return { goodsKg: round1(goods), grossKg: round1(goods + pallets * PALLET_TARE_KG), pallets, boxes, incomplete };
 }
+
+/** Add up several weights (e.g. a day's or a week's orders). */
+export const sumWeights = (ws: Weight[]): Weight =>
+  ws.reduce((a, w) => ({ goodsKg: round1(a.goodsKg + w.goodsKg), grossKg: round1(a.grossKg + w.grossKg), pallets: a.pallets + w.pallets, boxes: a.boxes + w.boxes, incomplete: a.incomplete || w.incomplete }), { goodsKg: 0, grossKg: 0, pallets: 0, boxes: 0, incomplete: false });
 
 /** The weight of several orders together (flattening their lines). */
 export const ordersWeight = (orders: { lines: OrderLine[] }[], product: (id: string) => Product | undefined): Weight => linesWeight(orders.flatMap((o) => o.lines), product);

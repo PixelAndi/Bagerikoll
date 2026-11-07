@@ -69,11 +69,11 @@ export function demoData(today: LocalDate, now: number, at: (day: LocalDate, hh:
     { id: id('b', 'st'), name: 'Surdegshuset Test AB', code: 'ST', color: '#b5651d', updatedAt: stamp },
   ];
   const [BE, ST] = brands.map((b) => b.id);
-  const C = (key: string, name: string, billedBy: string): Customer => ({ id: id('c', key), name, billedBy, updatedAt: stamp });
+  const C = (key: string, name: string, billedBy: string, palletTransfer = false): Customer => ({ id: id('c', key), name, billedBy, palletTransfer: palletTransfer || undefined, updatedAt: stamp });
   const customers: Customer[] = [
     C('gn', 'Grossist Nord', ST),
     C('gs', 'Grossist Syd', ST),
-    C('gv', 'Grossist Väst', ST),
+    C('gv', 'Grossist Väst', ST, true), // pallet transfer (PÖS): loose boxes ship on their own pallet
     C('lk', 'Livskedjan', ST),
     C('ck', 'Cafékedjan', BE),
     C('ss', 'Storkök Service', BE),
@@ -169,6 +169,10 @@ export function demoData(today: LocalDate, now: number, at: (day: LocalDate, hh:
       const o = dayOrders[0];
       o.firstLines = o.lines.map((l) => ({ ...l }));
       o.lines = o.lines.map((l, i) => (i === 0 ? { ...l, pallets: l.pallets + 2 } : l));
+    }
+    // A pallet-transfer customer that sometimes orders only a few boxes – shipped on their own pallet.
+    if (wd === 2) {
+      dayOrders.push({ id: id('o', n++), orderNumber: String(orderNo++), customerId: c('gv'), day, lines: [{ productId: id('p', 'ost'), pallets: 0, boxes: 4, plannedAt: at(addDays(day, -3), 10, 0) }], createdAt: at(addDays(day, -6), 9, 30), updatedAt: stamp });
     }
     if (wd === 4) {
       const o = dayOrders.find((x) => x.customerId === c('ck'))!;

@@ -143,6 +143,9 @@ function Customers() {
                 </option>
               ))}
             </select>
+            <label className="check-inline" title={t('admin.palletTransferHint')}>
+              <input type="checkbox" checked={!!c.palletTransfer} onChange={(e) => void db.customers.update(c.id, { palletTransfer: e.target.checked || undefined })} /> {t('admin.palletTransfer')}
+            </label>
             <button type="button" className="link-button small" onClick={() => void db.customers.update(c.id, { hidden: !c.hidden })}>
               {c.hidden ? t('admin.show') : t('admin.hide')}
             </button>
