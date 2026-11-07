@@ -56,6 +56,10 @@ async function api(path: string, body?: unknown): Promise<unknown> {
 }
 
 let enabled = false;
+// The Packetering / Fryslager stations never hold prices or costs (financial data stays on the
+// manager and accounting devices and the server). A station tells the server its role so the
+// server leaves the financial fields out, and sanitizeStation() clears any it already has.
+let isStation: () => boolean = () => false;
 let running: Promise<void> | null = null;
 let again = false;
 
@@ -65,6 +69,7 @@ async function round(device: string) {
   const pushedAt = await meta('sync.pushedAt', 0);
   let since = await meta('sync.seq', 0);
   // What changed here since the last send (a little overlap, so nothing slips between).
+  const station = isStation();
   const records: Record<string, unknown[]> = {};
   for (const name of DATA_TABLES) {
     const changed = await db.table(name).filter((r: { updatedAt?: number }) => (r.updatedAt ?? 0) >= pushedAt - 120_000).toArray();
@@ -73,7 +78,7 @@ async function round(device: string) {
   let received = 0;
   let first = true;
   for (;;) {
-    const answer = (await api('api/sync', { since, records: first ? records : {}, device })) as { seq: number; records: Record<string, { id: string; updatedAt?: number }[]>; more: boolean; demoRemovedAt?: number };
+    const answer = (await api('api/sync', { since, records: first ? records : {}, device, role: station ? 'station' : 'full' })) as { seq: number; records: Record<string, { id: string; updatedAt?: number }[]>; more: boolean; demoRemovedAt?: number };
     first = false;
     // The test data was taken off the server: take this device's copies off too.
     if (answer.demoRemovedAt && answer.demoRemovedAt > (await meta('sync.demoRemovedAt', 0))) {
@@ -98,6 +103,7 @@ async function round(device: string) {
     await setMeta('sync.seq', since);
     if (!answer.more) break;
   }
+  if (station) await sanitizeStation();
   await setMeta('sync.pushedAt', started);
   setStatus({ state: 'ok', at: Date.now(), received, error: undefined });
 }
@@ -112,6 +118,19 @@ export async function removeDemoEverywhere(device: string): Promise<void> {
     await setMeta('sync.demoRemovedAt', r.demoRemovedAt);
   }
   await removeDemoLocal();
+}
+
+/** On a station device, drop any price or cost it already holds (kept here without a new updatedAt, so it is not pushed back). */
+async function sanitizeStation() {
+  const prods = await db.products.filter((p) => p.prices !== undefined || p.costs !== undefined).toArray();
+  const custs = await db.customers.filter((c) => c.palletPrice !== undefined || c.buysPallets !== undefined).toArray();
+  if (!prods.length && !custs.length) return;
+  await whileReading(() =>
+    db.transaction('rw', db.products, db.customers, async () => {
+      for (const p of prods) await db.products.update(p.id, { prices: undefined, costs: undefined });
+      for (const c of custs) await db.customers.update(c.id, { palletPrice: undefined, buysPallets: undefined });
+    }),
+  );
 }
 
 /** Sync now (or as soon as the round running now is done). */
@@ -139,7 +158,8 @@ export function syncNow(device: string): Promise<void> {
 }
 
 /** Find out whether the app was opened from Bagerikoll's server, and if so keep it in sync. */
-export async function startSync(device: () => string) {
+export async function startSync(device: () => string, station: () => boolean = () => false) {
+  isStation = station;
   try {
     const health = (await api('api/health')) as { app?: string };
     enabled = health.app === 'bagerikoll';

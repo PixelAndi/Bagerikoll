@@ -12,6 +12,16 @@ export const TABLES = ['workers', 'brands', 'customers', 'products', 'sessions',
 /** The most records sent back in one answer; the device asks again for the rest. */
 export const PAGE = 2000;
 
+// Financial fields the station devices (Packetering, Fryslager) never receive or store – prices
+// and costs live only on the manager/accounting devices and the server.
+export const FINANCIAL = { products: ['prices', 'costs'], customers: ['palletPrice', 'buysPallets'] };
+const stripFinancial = (tbl, obj) => {
+  if (!FINANCIAL[tbl]) return obj;
+  const out = { ...obj };
+  for (const k of FINANCIAL[tbl]) delete out[k];
+  return out;
+};
+
 export function openStore(path) {
   const db = new DatabaseSync(path);
   db.exec(`
@@ -53,8 +63,9 @@ export function removeDemo(db, now = Date.now()) {
  * One sync: take what the device sends (records per table), keep the newer copies, and answer with
  * everything changed since `since` (at most PAGE records; `more` says if there is more to fetch).
  */
-export function sync(db, { since = 0, records = {} } = {}) {
-  const get = db.prepare(`SELECT updated_at FROM records WHERE tbl = ? AND id = ?`);
+export function sync(db, { since = 0, records = {}, role } = {}) {
+  const station = role === 'station';
+  const get = db.prepare(`SELECT data, updated_at FROM records WHERE tbl = ? AND id = ?`);
   const put = db.prepare(`INSERT INTO records (tbl, id, updated_at, seq, data) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT (tbl, id) DO UPDATE SET updated_at = excluded.updated_at, seq = excluded.seq, data = excluded.data`);
   let seq = currentSeq(db);
@@ -71,8 +82,15 @@ export function sync(db, { since = 0, records = {} } = {}) {
         if (demoRemovedAt && updated <= demoRemovedAt && r.id.startsWith(DEMO_PREFIX)) continue;
         const have = get.get(tbl, r.id);
         if (have && updated <= have.updated_at) continue;
+        // A station never holds the financial fields, so never let it blank them: keep the server's.
+        let value = r;
+        if (station && have && FINANCIAL[tbl]) {
+          const existing = JSON.parse(have.data);
+          value = { ...r };
+          for (const k of FINANCIAL[tbl]) if (existing[k] !== undefined) value[k] = existing[k];
+        }
         seq += 1;
-        put.run(tbl, r.id, updated, seq, JSON.stringify(r));
+        put.run(tbl, r.id, updated, seq, JSON.stringify(value));
         accepted += 1;
       }
     }
@@ -86,7 +104,7 @@ export function sync(db, { since = 0, records = {} } = {}) {
   const more = rows.length > PAGE;
   const page = more ? rows.slice(0, PAGE) : rows;
   const out = {};
-  for (const row of page) (out[row.tbl] ??= []).push(JSON.parse(row.data));
+  for (const row of page) (out[row.tbl] ??= []).push(station ? stripFinancial(row.tbl, JSON.parse(row.data)) : JSON.parse(row.data));
   return { seq: page.length ? page[page.length - 1].seq : Math.max(Number(since) || 0, 0) || seq, records: out, more, accepted, demoRemovedAt: demoRemovedAt || undefined };
 }
 

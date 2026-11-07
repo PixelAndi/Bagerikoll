@@ -61,3 +61,28 @@ describe('test data', async () => {
     expect(exportAll(db).tables.workers.map((w) => w.id).sort()).toEqual(['demo-w-2', 'w-real']);
   });
 });
+
+describe('station devices hold no financial data', async () => {
+  const { sync } = await import('./store.mjs');
+  it('strips prices for a station and never lets a station blank them', () => {
+    const db = openStore(':memory:');
+    // A manager device stores a product with prices and a customer with a pallet price.
+    sync(db, { records: { products: [{ id: 'p1', name: 'Bröd', boxesPerPallet: 20, prices: [{ from: '2030-01-01', perBox: 80 }], costs: [{ from: '2030-01-01', perBox: 50 }], updatedAt: 100 }], customers: [{ id: 'c1', name: 'Kund', buysPallets: true, palletPrice: 150, updatedAt: 100 }] } });
+    // A station pulls: it gets the product and customer but no financial fields.
+    const a = sync(db, { since: 0, role: 'station' });
+    const p = a.records.products[0];
+    expect(p.name).toBe('Bröd');
+    expect(p.boxesPerPallet).toBe(20);
+    expect(p.prices).toBeUndefined();
+    expect(p.costs).toBeUndefined();
+    expect(a.records.customers[0].palletPrice).toBeUndefined();
+    expect(a.records.customers[0].buysPallets).toBeUndefined();
+    // The station edits the product (e.g. renames it) and pushes it back without prices.
+    sync(db, { role: 'station', records: { products: [{ id: 'p1', name: 'Bröd nytt namn', boxesPerPallet: 20, updatedAt: 200 }] } });
+    // A manager pulls: the price is still there (the station could not wipe it), with the new name.
+    const m = sync(db, { since: 0 });
+    const pm = m.records.products.find((x) => x.id === 'p1');
+    expect(pm.name).toBe('Bröd nytt namn');
+    expect(pm.prices?.[0]?.perBox).toBe(80);
+  });
+});

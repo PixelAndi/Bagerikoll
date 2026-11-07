@@ -99,8 +99,11 @@ export function App() {
   // Sync with the server when the app is opened from it (src/sync.ts).
   const station = useRef(settings.station);
   station.current = settings.station;
+  // A Packetering / Fryslager station holds no financial data (src/sync.ts).
+  const stationRole = useRef(false);
+  stationRole.current = settings.locked && (settings.lockedTo === 'pack' || settings.lockedTo === 'dock');
   useEffect(() => {
-    void startSync(() => station.current);
+    void startSync(() => station.current, () => stationRole.current);
     // The demo site: today's made-up data, and on a first visit the manager's view (everything).
     if (DEMO_SITE)
       void ensureDemo().then(() => {

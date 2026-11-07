@@ -255,7 +255,7 @@ runs on the bakery's own server.
 
 Opened from Bagerikoll's server (`server/`, see `deploy/TRUENAS.md`), every device keeps a full
 copy and syncs with the server (the header shows **Synkad HH:MM**; offline work syncs later).
-Opened from anywhere else, each device keeps its own data. Mer → **Datafil**
+Opened from anywhere else, each device keeps its own data. A device locked to Packetering or Fryslager never holds any prices or costs — the server leaves the financial fields out of what it sends there, so money data stays on the manager and accounting devices. Mer → **Datafil**
 saves everything as a JSON file (the share sheet on a phone/tablet) and reads one in: records
 are joined by id and the newer copy wins (`updatedAt`, stamped on every write in `db.ts`);
 nothing is deleted. Never put a data file in this repository – it holds people's names.

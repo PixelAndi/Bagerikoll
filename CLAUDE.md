@@ -42,7 +42,7 @@ built by `.github/workflows/server.yml`; testing on the owner's TrueNAS behind a
 + Access on the owner's own domain (`deploy/truenas-compose.yaml`, `deploy/TRUENAS.md`; the tunnel
 token never goes in the repo or chat). The app syncs only when opened from the server
 (`src/sync.ts`: health check, push changed since last push, pull since seq, `mergeRecords`;
-header `SyncBadge`); on GitHub Pages it stays device-only. Updates: the compose file's
+header `SyncBadge`); on GitHub Pages it stays device-only. **Station devices hold no financial data**: a Packetering/Fryslager device (`settings.locked` pack/dock) syncs with `role: 'station'`, and the server leaves the financial fields out (`FINANCIAL` in store.mjs: `Product.prices/costs`, `Customer.palletPrice/buysPallets`) and never lets a station blank the server's copy; `sanitizeStation` in sync.ts clears any a device already had (without a new `updatedAt`, so nothing is pushed back). Prices/costs live only on the manager and accounting devices and the server. Updates: the compose file's
 `watchtower` (maintained fork `nickfedor/watchtower`, label-scoped, hourly) restarts the server on a
 new image; open pages show "Ladda om" when the published index.html loads another script
 (`src/update.ts`, `ui/UpdateBar.tsx`). The image's web build runs natively
