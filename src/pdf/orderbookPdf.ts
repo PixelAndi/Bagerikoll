@@ -104,7 +104,7 @@ export async function saveOrderbookPdf(ob: Orderbook, filename: string, mode: 'b
         const nameMax = Math.max(6, colW - qtyW - 2 - (wt ? doc.getTextWidth(wt) : 0));
         const nm = fit(l.name, nameMax);
         // A faint band behind every other line ties the name to its pallet/price across the gap.
-        if (li % 2 === 1) {
+        if (li % 2 === 0) {
           doc.setFillColor(236, 236, 232);
           doc.rect(x0 - 0.6, y - 2.4, colW + 1.2, 3.0, 'F');
         }
